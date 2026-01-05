@@ -1,0 +1,10 @@
+# Rust builds
+/target
+
+# Local config
+.cargo/
+.claude/
+
+# IDE
+.idea/
+.vscode/

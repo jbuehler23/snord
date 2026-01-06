@@ -33,6 +33,17 @@ pub fn sound_effect(handle: Handle<AudioSource>) -> impl Bundle {
     (AudioPlayer(handle), PlaybackSettings::DESPAWN, SoundEffect)
 }
 
+/// A sound effect with custom pitch and volume.
+pub fn sound_effect_with_settings(handle: Handle<AudioSource>, pitch: f32, volume: f32) -> impl Bundle {
+    (
+        AudioPlayer(handle),
+        PlaybackSettings::DESPAWN
+            .with_speed(pitch)
+            .with_volume(bevy::audio::Volume::Linear(volume)),
+        SoundEffect,
+    )
+}
+
 /// [`GlobalVolume`] doesn't apply to already-running audio entities, so this system will update them.
 fn apply_global_volume(
     global_volume: Res<GlobalVolume>,

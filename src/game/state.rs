@@ -85,8 +85,8 @@ impl GameLevel {
     pub fn advance_level(&mut self) {
         self.level += 1;
         self.shots_this_round = 0;
-        // Decrease shots needed: 8 -> 7 -> 6 -> 5 (minimum)
-        self.shots_until_descent = (9u32.saturating_sub(self.level)).max(5);
+        // Ramp down every 10 levels: 8 -> 7 -> 6 -> 5 (minimum)
+        self.shots_until_descent = 8u32.saturating_sub(self.level / 10).max(5);
     }
 
     /// Returns shots remaining until next descent.

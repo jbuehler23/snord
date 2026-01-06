@@ -107,6 +107,11 @@ impl HexGrid {
         self.bubbles.contains_key(&coord)
     }
 
+    /// Check if a coordinate is adjacent to any occupied cell.
+    fn is_adjacent_to_bubble(&self, coord: HexCoord) -> bool {
+        coord.neighbors().iter().any(|n| self.is_occupied(*n))
+    }
+
     /// Get the bubble entity at a position, if any.
     pub fn get(&self, coord: HexCoord) -> Option<Entity> {
         self.bubbles.get(&coord).copied()
@@ -171,7 +176,8 @@ impl HexGrid {
         let target = HexCoord::from_pixel_with_offset(world_pos, HEX_SIZE, grid_origin_y);
 
         // If the target cell is valid and empty, use it
-        if self.bounds.contains(target) && !self.is_occupied(target) {
+        // Allow cells within bounds OR adjacent to existing bubbles (for descended rows)
+        if (self.bounds.contains(target) || self.is_adjacent_to_bubble(target)) && !self.is_occupied(target) {
             return Some(target);
         }
 
@@ -188,7 +194,8 @@ impl HexGrid {
                 }
                 checked.insert(coord);
 
-                if self.bounds.contains(coord) && !self.is_occupied(coord) {
+                // Allow cells within bounds OR adjacent to existing bubbles (for descended rows)
+                if (self.bounds.contains(coord) || self.is_adjacent_to_bubble(coord)) && !self.is_occupied(coord) {
                     return Some(coord);
                 }
 

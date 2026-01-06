@@ -4,7 +4,10 @@
 //! When a cluster of 3+ is found, they pop!
 
 use bevy::prelude::*;
+use rand::Rng;
 use std::collections::{HashSet, VecDeque};
+
+use crate::{asset_tracking::LoadResource, audio::sound_effect_with_settings};
 
 use super::{
     bubble::{Bubble, BubbleColor},
@@ -14,7 +17,28 @@ use super::{
 };
 use crate::{screens::Screen, PausableSystems};
 
+/// Audio assets for game sound effects.
+#[derive(Resource, Asset, Clone, Reflect)]
+#[reflect(Resource)]
+pub struct GameAudioAssets {
+    #[dependency]
+    pub death_scream_1: Handle<AudioSource>,
+    #[dependency]
+    pub death_scream_2: Handle<AudioSource>,
+}
+
+impl FromWorld for GameAudioAssets {
+    fn from_world(world: &mut World) -> Self {
+        let assets = world.resource::<AssetServer>();
+        Self {
+            death_scream_1: assets.load("audio/sound_effects/death_scream_1.ogg"),
+            death_scream_2: assets.load("audio/sound_effects/death_scream_2.ogg"),
+        }
+    }
+}
+
 pub(super) fn plugin(app: &mut App) {
+    app.load_resource::<GameAudioAssets>();
     app.add_message::<ClusterPopped>();
     app.add_message::<FloatingBubblesRemoved>();
 
@@ -75,6 +99,7 @@ fn detect_clusters(
     bubble_query: Query<&Bubble>,
     mut landed_events: MessageReader<BubbleLanded>,
     mut popped_events: MessageWriter<ClusterPopped>,
+    audio_assets: Option<Res<GameAudioAssets>>,
 ) {
     for event in landed_events.read() {
         // Find the cluster starting from the landed bubble
@@ -93,6 +118,20 @@ fn detect_clusters(
                 if let Some(entity) = grid.remove(coord) {
                     commands.entity(entity).despawn();
                 }
+            }
+
+            // Play one death scream per cluster popped
+            if let Some(ref assets) = audio_assets {
+                let mut rng = rand::rng();
+                // Random scream selection
+                let scream = if rng.random_bool(0.5) {
+                    assets.death_scream_1.clone()
+                } else {
+                    assets.death_scream_2.clone()
+                };
+                // Random pitch (0.9 to 1.1) for subtle variety
+                let pitch = rng.random_range(0.9..1.1);
+                commands.spawn(sound_effect_with_settings(scream, pitch, 1.0));
             }
 
             popped_events.write(ClusterPopped {

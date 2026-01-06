@@ -8,7 +8,7 @@ use bevy::prelude::*;
 use super::{
     bubble::{spawn_bubble, BubbleColor},
     grid::HexGrid,
-    hex::{HexCoord, HEX_SIZE},
+    hex::{GridOffset, HexCoord, HEX_SIZE},
     shooter::SHOOTER_Y,
 };
 use crate::{screens::Screen, PausableSystems};
@@ -101,9 +101,7 @@ fn spawn_projectile(
                 velocity,
                 color: event.color,
             },
-            // Hexagon mesh matching grid bubbles (pointy-top orientation)
-            Transform::from_translation(event.position.extend(5.0))
-                .with_rotation(Quat::from_rotation_z(std::f32::consts::FRAC_PI_6)),
+            Transform::from_translation(event.position.extend(5.0)),
             Mesh2d(meshes.add(RegularPolygon::new(HEX_SIZE, 6))),
             MeshMaterial2d(materials.add(ColorMaterial::from_color(event.color.to_color()))),
             DespawnOnExit(Screen::Gameplay),
@@ -132,6 +130,7 @@ fn check_wall_collision(
     mut query: Query<(Entity, &mut Transform, &mut Projectile)>,
     mut landed_events: MessageWriter<BubbleLanded>,
     mut danger_events: MessageWriter<BubbleInDangerZone>,
+    grid_offset: Res<GridOffset>,
 ) {
     for (entity, mut transform, mut projectile) in &mut query {
         let pos = transform.translation;
@@ -152,9 +151,9 @@ fn check_wall_collision(
         // Top wall - snap to grid
         if pos.y + radius > TOP_WALL {
             let world_pos = pos.truncate();
-            if let Some(coord) = grid.closest_empty_cell(world_pos) {
+            if let Some(coord) = grid.closest_empty_cell(world_pos, grid_offset.y) {
                 // Check if landing position is in danger zone
-                let landing_y = coord.to_pixel(HEX_SIZE).y;
+                let landing_y = coord.to_pixel_with_offset(HEX_SIZE, grid_offset.y).y;
                 if landing_y < DANGER_LINE_Y {
                     info!("Bubble would land in danger zone at y={}, triggering game over", landing_y);
                     danger_events.write(BubbleInDangerZone);
@@ -168,6 +167,7 @@ fn check_wall_collision(
                         entity,
                         coord,
                         projectile.color,
+                        grid_offset.y,
                     );
                     landed_events.write(BubbleLanded {
                         coord,
@@ -199,6 +199,7 @@ fn check_bubble_collision(
     bubble_query: Query<&Transform, Without<Projectile>>,
     mut landed_events: MessageWriter<BubbleLanded>,
     mut danger_events: MessageWriter<BubbleInDangerZone>,
+    grid_offset: Res<GridOffset>,
 ) {
     let collision_distance = HEX_SIZE * 1.8; // Slightly less than 2 radii
 
@@ -239,7 +240,7 @@ fn check_bubble_collision(
             return;
         }
 
-        if let Some(snap_coord) = grid.closest_empty_cell(proj_pos) {
+        if let Some(snap_coord) = grid.closest_empty_cell(proj_pos, grid_offset.y) {
             let new_entity = land_projectile(
                 &mut commands,
                 &mut meshes,
@@ -248,6 +249,7 @@ fn check_bubble_collision(
                 proj_entity,
                 snap_coord,
                 color,
+                grid_offset.y,
             );
             landed_events.write(BubbleLanded {
                 coord: snap_coord,
@@ -270,12 +272,13 @@ fn land_projectile(
     projectile_entity: Entity,
     coord: HexCoord,
     color: BubbleColor,
+    grid_origin_y: f32,
 ) -> Entity {
     // Despawn the projectile
     commands.entity(projectile_entity).despawn();
 
     // Spawn a new bubble at the grid position
-    let new_entity = spawn_bubble(commands, meshes, materials, coord, color);
+    let new_entity = spawn_bubble(commands, meshes, materials, coord, color, grid_origin_y);
     grid.insert(coord, new_entity);
 
     info!("Bubble landed at {} with color {:?}", coord, color);

@@ -1,14 +1,17 @@
-//! Game state management - score, win/lose conditions.
+//! Game state management - score, win/lose conditions, level progression.
 //!
 //! Win: Clear all bubbles from the grid.
 //! Lose: Bubbles reach the danger zone (bottom of grid).
+//!
+//! Level system: After X shots, all bubbles descend and a new row spawns.
 
 use bevy::prelude::*;
 
 use super::{
-    bubble::Bubble,
+    bubble::{spawn_bubble, Bubble, BubbleColor},
     cluster::{ClusterPopped, FloatingBubblesRemoved},
     grid::HexGrid,
+    hex::{GridOffset, HexCoord, HEX_SIZE},
     highscore::{HighScores, ScoreEntry},
     projectile::BubbleInDangerZone,
     shooter::SHOOTER_Y,
@@ -17,22 +20,79 @@ use crate::{screens::Screen, PausableSystems, menus::Menu};
 
 pub(super) fn plugin(app: &mut App) {
     app.init_resource::<GameScore>();
+    app.init_resource::<GameLevel>();
     app.register_type::<GameScore>();
+    app.register_type::<GameLevel>();
 
-    app.add_systems(OnEnter(Screen::Gameplay), reset_score);
+    app.add_message::<TriggerDescent>();
+
+    app.add_systems(OnEnter(Screen::Gameplay), (reset_score, reset_level, spawn_score_ui));
 
     app.add_systems(
         Update,
         (
             update_score,
+            update_score_ui,
+            handle_descent,
             check_win_condition,
             check_lose_condition,
             check_danger_zone_game_over,
-            draw_score_ui,
+            draw_danger_line,
         )
             .in_set(PausableSystems)
             .run_if(in_state(Screen::Gameplay)),
     );
+}
+
+/// Marker component for the score text UI.
+#[derive(Component)]
+struct ScoreText;
+
+/// Message to trigger bubble descent.
+#[derive(Message, Debug, Clone)]
+pub struct TriggerDescent;
+
+/// Resource tracking the current level and descent timing.
+#[derive(Resource, Debug, Reflect)]
+#[reflect(Resource)]
+pub struct GameLevel {
+    /// Current level number (starts at 1).
+    pub level: u32,
+    /// Number of shots before next descent.
+    pub shots_until_descent: u32,
+    /// Shots fired since last descent.
+    pub shots_this_round: u32,
+}
+
+impl Default for GameLevel {
+    fn default() -> Self {
+        Self {
+            level: 1,
+            shots_until_descent: 8,
+            shots_this_round: 0,
+        }
+    }
+}
+
+impl GameLevel {
+    pub fn reset(&mut self) {
+        self.level = 1;
+        self.shots_until_descent = 8;
+        self.shots_this_round = 0;
+    }
+
+    /// Called after each descent to advance the level.
+    pub fn advance_level(&mut self) {
+        self.level += 1;
+        self.shots_this_round = 0;
+        // Decrease shots needed: 8 -> 7 -> 6 -> 5 (minimum)
+        self.shots_until_descent = (9u32.saturating_sub(self.level)).max(5);
+    }
+
+    /// Returns shots remaining until next descent.
+    pub fn shots_remaining(&self) -> u32 {
+        self.shots_until_descent.saturating_sub(self.shots_this_round)
+    }
 }
 
 /// Points awarded per bubble popped in a cluster.
@@ -65,6 +125,117 @@ impl GameScore {
 fn reset_score(mut score: ResMut<GameScore>) {
     score.reset();
     info!("Score reset");
+}
+
+/// Reset level when starting a new game.
+fn reset_level(mut level: ResMut<GameLevel>) {
+    level.reset();
+    info!("Level reset to 1");
+}
+
+/// Handle bubble descent when triggered.
+fn handle_descent(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<ColorMaterial>>,
+    mut grid: ResMut<HexGrid>,
+    mut level: ResMut<GameLevel>,
+    mut grid_offset: ResMut<GridOffset>,
+    mut bubble_query: Query<(&Bubble, &mut Transform)>,
+    mut descent_events: MessageReader<TriggerDescent>,
+    mut danger_events: MessageWriter<BubbleInDangerZone>,
+) {
+    // Only process if we received a descent trigger
+    if descent_events.read().next().is_none() {
+        return;
+    }
+
+    info!("Descent triggered! Moving grid down...");
+
+    // Move grid down by one row height (bubbles keep their coordinates)
+    grid_offset.y -= HEX_SIZE * 1.5;
+
+    // Update all bubble transforms with new offset (coords stay the same)
+    for (_coord, &entity) in grid.iter() {
+        if let Ok((bubble, mut transform)) = bubble_query.get_mut(entity) {
+            let new_pos = bubble.coord.to_pixel_with_offset(HEX_SIZE, grid_offset.y);
+            transform.translation.x = new_pos.x;
+            transform.translation.y = new_pos.y;
+        }
+    }
+
+    // Find the current minimum row to spawn new row above it
+    let min_r = grid.iter().map(|(coord, _)| coord.r).min().unwrap_or(0);
+    let new_row_r = min_r - 1;
+
+    // Spawn new row at top
+    let bounds = grid.bounds;
+    for q in bounds.min_q..=bounds.max_q {
+        let coord = HexCoord::new(q, new_row_r);
+        let color = BubbleColor::random();
+        let entity = spawn_bubble(&mut commands, &mut meshes, &mut materials, coord, color, grid_offset.y);
+        grid.insert(coord, entity);
+    }
+
+    // Check for game over (any bubble below danger line after descent)
+    for (_coord, &entity) in grid.iter() {
+        if let Ok((_, transform)) = bubble_query.get(entity) {
+            if transform.translation.y < DANGER_LINE_Y {
+                info!(
+                    "GAME OVER! Descent pushed bubble into danger zone at y={}",
+                    transform.translation.y
+                );
+                danger_events.write(BubbleInDangerZone);
+                return;
+            }
+        }
+    }
+
+    // Advance level
+    level.advance_level();
+    info!(
+        "Level {} - next descent in {} shots (grid_offset.y = {})",
+        level.level, level.shots_until_descent, grid_offset.y
+    );
+}
+
+/// Spawn the score text UI.
+fn spawn_score_ui(mut commands: Commands) {
+    commands.spawn((
+        ScoreText,
+        Text::new("Score: 0"),
+        TextFont {
+            font_size: 24.0,
+            ..default()
+        },
+        TextColor(Color::WHITE),
+        Node {
+            position_type: PositionType::Absolute,
+            top: Val::Px(10.0),
+            left: Val::Px(10.0),
+            ..default()
+        },
+        DespawnOnExit(Screen::Gameplay),
+    ));
+}
+
+/// Update the score text when score or level changes.
+fn update_score_ui(
+    score: Res<GameScore>,
+    level: Res<GameLevel>,
+    mut query: Query<&mut Text, With<ScoreText>>,
+) {
+    if !score.is_changed() && !level.is_changed() {
+        return;
+    }
+    for mut text in &mut query {
+        **text = format!(
+            "Score: {}\nLevel: {}\nShots: {}",
+            score.score,
+            level.level,
+            level.shots_remaining()
+        );
+    }
 }
 
 /// Update score when clusters/floating bubbles are removed.
@@ -145,8 +316,8 @@ fn check_lose_condition(
                     high_scores.save();
                 }
 
-                // Show game over (using pause menu as placeholder)
-                next_menu.set(Menu::Pause);
+                // Show game over screen
+                next_menu.set(Menu::GameOver);
                 return;
             }
         }
@@ -173,26 +344,13 @@ fn check_danger_zone_game_over(
             high_scores.save();
         }
 
-        // Show game over (using pause menu as placeholder)
-        next_menu.set(Menu::Pause);
+        // Show game over screen
+        next_menu.set(Menu::GameOver);
     }
 }
 
-/// Draw the score UI.
-fn draw_score_ui(mut gizmos: Gizmos, _score: Res<GameScore>) {
-    // Draw score text at top of screen
-    // Note: Using gizmos for now, could use proper UI later
-    // TODO: Add proper text rendering for score display
-
-    // Draw score background
-    let score_pos = Vec2::new(0.0, 280.0);
-    gizmos.rect_2d(
-        Isometry2d::from_translation(score_pos),
-        Vec2::new(200.0, 40.0),
-        Color::srgba(0.0, 0.0, 0.0, 0.7),
-    );
-
-    // Draw danger line
+/// Draw the danger line indicator.
+fn draw_danger_line(mut gizmos: Gizmos) {
     let danger_y = DANGER_LINE_Y;
     gizmos.line_2d(
         Vec2::new(-400.0, danger_y),

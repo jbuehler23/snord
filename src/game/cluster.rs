@@ -127,7 +127,7 @@ fn find_cluster(
 
     // Start exploring from the starting position's neighbors
     for neighbor in start.neighbors() {
-        if !visited.contains(&neighbor) && grid.bounds.contains(neighbor) {
+        if !visited.contains(&neighbor) {
             visited.insert(neighbor);
             queue.push_back(neighbor);
         }
@@ -143,7 +143,7 @@ fn find_cluster(
 
                     // Add unvisited neighbors to the queue
                     for neighbor in coord.neighbors() {
-                        if !visited.contains(&neighbor) && grid.bounds.contains(neighbor) {
+                        if !visited.contains(&neighbor) {
                             visited.insert(neighbor);
                             queue.push_back(neighbor);
                         }

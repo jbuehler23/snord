@@ -10,6 +10,7 @@ use super::{
     bubble::BubbleColor,
     hex::HEX_SIZE,
     projectile::{FireProjectile, Projectile},
+    state::{GameLevel, TriggerDescent},
 };
 use crate::{screens::Screen, PausableSystems};
 
@@ -110,8 +111,7 @@ fn spawn_shooter(
             // The loaded bubble visual (hexagon at shooter position)
             parent.spawn((
                 Name::new("Loaded Bubble Display"),
-                Transform::default()
-                    .with_rotation(Quat::from_rotation_z(std::f32::consts::FRAC_PI_6)),
+                Transform::default(),
                 Mesh2d(meshes.add(RegularPolygon::new(HEX_SIZE, 6))),
                 MeshMaterial2d(materials.add(ColorMaterial::from_color(loaded_color.to_color()))),
             ));
@@ -130,8 +130,7 @@ fn spawn_shooter(
             // Next bubble preview (smaller hexagon to the side)
             parent.spawn((
                 Name::new("Next Bubble Preview"),
-                Transform::from_xyz(HEX_SIZE * 3.0, 0.0, 0.0)
-                    .with_rotation(Quat::from_rotation_z(std::f32::consts::FRAC_PI_6)),
+                Transform::from_xyz(HEX_SIZE * 3.0, 0.0, 0.0),
                 Mesh2d(meshes.add(RegularPolygon::new(HEX_SIZE * 0.6, 6))),
                 MeshMaterial2d(materials.add(ColorMaterial::from_color(next_color.to_color()))),
             ));
@@ -225,6 +224,7 @@ fn handle_fire_input(
     >,
     projectile_query: Query<&Projectile>,
     mut fire_events: MessageWriter<FireProjectile>,
+    mut level: ResMut<GameLevel>,
 ) {
     // Check for fire input
     let fire_pressed = mouse_input.just_pressed(MouseButton::Left)
@@ -258,7 +258,13 @@ fn handle_fire_input(
     });
 
     *state = ShooterState::Reloading;
-    info!("Fired {:?} bubble in direction {:?}", loaded.0, aim.0);
+
+    // Track shots for descent system
+    level.shots_this_round += 1;
+    info!(
+        "Fired {:?} bubble in direction {:?} (shot {}/{})",
+        loaded.0, aim.0, level.shots_this_round, level.shots_until_descent
+    );
 }
 
 /// Reload the shooter after the projectile lands.
@@ -275,6 +281,8 @@ fn reload_shooter(
     mut material_query: Query<&mut MeshMaterial2d<ColorMaterial>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
     projectile_query: Query<&Projectile>,
+    level: Res<GameLevel>,
+    mut descent_events: MessageWriter<TriggerDescent>,
 ) {
     let Ok((mut state, mut loaded, mut next, children)) = shooter_query.single_mut() else {
         return;
@@ -307,4 +315,13 @@ fn reload_shooter(
 
     *state = ShooterState::Ready;
     info!("Reloaded with {:?}, next is {:?}", loaded.0, next.0);
+
+    // Check if it's time for descent
+    if level.shots_this_round >= level.shots_until_descent {
+        info!(
+            "Triggering descent! ({} shots reached)",
+            level.shots_this_round
+        );
+        descent_events.write(TriggerDescent);
+    }
 }

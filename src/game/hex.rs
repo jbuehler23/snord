@@ -9,8 +9,32 @@
 
 use bevy::prelude::*;
 
+use crate::screens::Screen;
+
 pub(super) fn plugin(app: &mut App) {
     app.register_type::<HexCoord>();
+    app.register_type::<GridOffset>();
+    app.init_resource::<GridOffset>();
+    app.add_systems(OnEnter(Screen::Gameplay), reset_grid_offset);
+}
+
+/// Resource tracking the grid's Y origin (decreases on descent).
+#[derive(Resource, Debug, Clone, Reflect)]
+#[reflect(Resource)]
+pub struct GridOffset {
+    pub y: f32,
+}
+
+impl Default for GridOffset {
+    fn default() -> Self {
+        Self { y: GRID_ORIGIN_Y }
+    }
+}
+
+/// Reset grid offset when starting a new game.
+fn reset_grid_offset(mut grid_offset: ResMut<GridOffset>) {
+    grid_offset.y = GRID_ORIGIN_Y;
+    info!("Grid offset reset to {}", grid_offset.y);
 }
 
 /// Square root of 3, used frequently in hex math.
@@ -106,12 +130,20 @@ impl HexCoord {
     /// - y = size * 1.5 * r
     ///
     /// Odd rows are shifted right by half a hex width, creating a rectangular grid.
+    /// Uses the default GRID_ORIGIN_Y constant.
     pub fn to_pixel(&self, size: f32) -> Vec2 {
+        self.to_pixel_with_offset(size, GRID_ORIGIN_Y)
+    }
+
+    /// Convert offset hex coordinates to pixel (world) position with custom grid origin.
+    ///
+    /// Use this version when the grid origin has changed (e.g., after descent).
+    pub fn to_pixel_with_offset(&self, size: f32, grid_origin_y: f32) -> Vec2 {
         // Odd rows shift right by half a hex width
         let row_offset = if self.r % 2 != 0 { 0.5 } else { 0.0 };
         let x = size * SQRT_3 * (self.q as f32 + row_offset);
         let y = size * 1.5 * self.r as f32;
-        Vec2::new(x, GRID_ORIGIN_Y - y)
+        Vec2::new(x, grid_origin_y - y)
     }
 
     /// Convert pixel (world) position to offset hex coordinates.
@@ -119,9 +151,17 @@ impl HexCoord {
     /// This returns the nearest hex to the given position.
     /// For offset coordinates, we find the row first, then determine column
     /// based on row parity (odd rows are shifted right).
+    /// Uses the default GRID_ORIGIN_Y constant.
     pub fn from_pixel(pos: Vec2, size: f32) -> Self {
+        Self::from_pixel_with_offset(pos, size, GRID_ORIGIN_Y)
+    }
+
+    /// Convert pixel (world) position to offset hex coordinates with custom grid origin.
+    ///
+    /// Use this version when the grid origin has changed (e.g., after descent).
+    pub fn from_pixel_with_offset(pos: Vec2, size: f32, grid_origin_y: f32) -> Self {
         // Account for grid origin offset
-        let y = GRID_ORIGIN_Y - pos.y;
+        let y = grid_origin_y - pos.y;
         let x = pos.x;
 
         // Find row first (simple division)

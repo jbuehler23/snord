@@ -8,7 +8,7 @@ use rand::Rng;
 
 use super::{
     grid::HexGrid,
-    hex::{HexCoord, HEX_SIZE},
+    hex::{GridOffset, HexCoord, HEX_SIZE},
 };
 use crate::screens::Screen;
 
@@ -93,6 +93,7 @@ fn spawn_initial_bubbles(
     mut grid: ResMut<HexGrid>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
+    grid_offset: Res<GridOffset>,
 ) {
     info!("Spawning initial bubbles...");
 
@@ -105,7 +106,7 @@ fn spawn_initial_bubbles(
             let coord = HexCoord::new(q, r);
             let color = BubbleColor::random();
 
-            let entity = spawn_bubble(&mut commands, &mut meshes, &mut materials, coord, color);
+            let entity = spawn_bubble(&mut commands, &mut meshes, &mut materials, coord, color, grid_offset.y);
             grid.insert(coord, entity);
             count += 1;
         }
@@ -121,20 +122,18 @@ pub fn spawn_bubble(
     materials: &mut Assets<ColorMaterial>,
     coord: HexCoord,
     color: BubbleColor,
+    grid_origin_y: f32,
 ) -> Entity {
-    let world_pos = coord.to_pixel(HEX_SIZE);
+    let world_pos = coord.to_pixel_with_offset(HEX_SIZE, grid_origin_y);
 
     // Create a hexagon mesh for the bubble
     // RegularPolygon::new(circumradius, sides) - circumradius = HEX_SIZE
-    // Rotate 30° (FRAC_PI_6) for pointy-top orientation to match grid
     commands
         .spawn((
             Name::new(format!("Bubble {:?} at {}", color, coord)),
             Bubble { color, coord },
             color,
-            // Transform with rotation for pointy-top hexagon
-            Transform::from_translation(world_pos.extend(0.0))
-                .with_rotation(Quat::from_rotation_z(std::f32::consts::FRAC_PI_6)),
+            Transform::from_translation(world_pos.extend(0.0)),
             // Hexagon mesh
             Mesh2d(meshes.add(RegularPolygon::new(HEX_SIZE, 6))),
             MeshMaterial2d(materials.add(ColorMaterial::from_color(color.to_color()))),

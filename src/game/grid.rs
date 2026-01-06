@@ -167,8 +167,8 @@ impl HexGrid {
     /// This is used when a projectile needs to snap to the grid.
     /// It first converts the position to hex coordinates, then finds
     /// the nearest valid empty cell.
-    pub fn closest_empty_cell(&self, world_pos: Vec2) -> Option<HexCoord> {
-        let target = HexCoord::from_pixel(world_pos, HEX_SIZE);
+    pub fn closest_empty_cell(&self, world_pos: Vec2, grid_origin_y: f32) -> Option<HexCoord> {
+        let target = HexCoord::from_pixel_with_offset(world_pos, HEX_SIZE, grid_origin_y);
 
         // If the target cell is valid and empty, use it
         if self.bounds.contains(target) && !self.is_occupied(target) {
@@ -217,12 +217,17 @@ impl HexGrid {
         self.bubbles.keys().map(|c| c.r).max()
     }
 
-    /// Get all bubbles in the top row (r = 0).
+    /// Get all bubbles in the top row (smallest r value).
     /// Used as starting point for floating bubble detection.
     pub fn top_row_coords(&self) -> Vec<HexCoord> {
+        // Find the minimum r value (top row may be negative after descents)
+        let Some(min_r) = self.bubbles.keys().map(|c| c.r).min() else {
+            return Vec::new();
+        };
+
         self.bubbles
             .keys()
-            .filter(|c| c.r == 0)
+            .filter(|c| c.r == min_r)
             .copied()
             .collect()
     }

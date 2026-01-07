@@ -109,7 +109,10 @@ fn spawn_projectile(
         let sprite_image = match event.color {
             BubbleColor::Blue => Some(game_assets.derpy_image.clone()),
             BubbleColor::Purple => Some(game_assets.scared_image.clone()),
-            _ => None,
+            BubbleColor::Yellow => Some(game_assets.sad_image.clone()),
+            BubbleColor::Red => Some(game_assets.angry_image.clone()),
+            BubbleColor::Green => Some(game_assets.happy_image.clone()),
+            BubbleColor::Orange => Some(game_assets.enamored_image.clone()),
         };
 
         if let Some(image) = sprite_image {

@@ -30,6 +30,7 @@ pub(super) fn plugin(app: &mut App) {
         Update,
         (
             update_aim_direction,
+            update_shooter_arrow_rotation,
             draw_aim_line,
             handle_fire_input,
             reload_shooter,
@@ -112,6 +113,10 @@ struct SecondNextBubbleVisual;
 #[derive(Component)]
 struct ThirdNextBubbleVisual;
 
+/// Marker for the shooter arrow visual entity.
+#[derive(Component)]
+struct ShooterArrowVisual;
+
 /// Spawn the shooter at the bottom of the screen.
 fn spawn_shooter(
     mut commands: Commands,
@@ -143,6 +148,22 @@ fn spawn_shooter(
         ))
         .id();
 
+    // Spawn the shooter arrow visual (follows aim direction)
+    // Anchor at bottom so rotation pivot matches guide line origin
+    let arrow = commands.spawn((
+        Name::new("Shooter Arrow"),
+        ShooterArrowVisual,
+        Transform::from_translation(Vec3::new(0.0, 0.0, 2.0)),
+        Sprite {
+            image: game_assets.shooter_image.clone(),
+            // Stretch to make it longer (64x64 -> 64x128)
+            custom_size: Some(Vec2::new(64.0, 128.0)),
+            ..default()
+        },
+        bevy::sprite::Anchor::BOTTOM_CENTER,
+    )).id();
+    commands.entity(shooter_entity).add_child(arrow);
+
     // Spawn preview bubble visuals as children
     spawn_bubble_visual(
         &mut commands,
@@ -158,7 +179,7 @@ fn spawn_shooter(
     );
 
     // Base/platform visual
-    commands.spawn((
+    let base = commands.spawn((
         Name::new("Shooter Base"),
         Sprite {
             color: Color::srgb(0.3, 0.3, 0.35),
@@ -166,7 +187,8 @@ fn spawn_shooter(
             ..default()
         },
         Transform::from_xyz(0.0, -HEX_SIZE * 1.2, -0.1),
-    )).set_parent_in_place(shooter_entity);
+    )).id();
+    commands.entity(shooter_entity).add_child(base);
 
     spawn_bubble_visual(
         &mut commands,
@@ -227,28 +249,33 @@ fn spawn_bubble_visual<M: Component>(
     let sprite_image = match color {
         BubbleColor::Blue => Some(game_assets.derpy_image.clone()),
         BubbleColor::Purple => Some(game_assets.scared_image.clone()),
-        _ => None,
+        BubbleColor::Yellow => Some(game_assets.sad_image.clone()),
+        BubbleColor::Red => Some(game_assets.angry_image.clone()),
+        BubbleColor::Green => Some(game_assets.happy_image.clone()),
+        BubbleColor::Orange => Some(game_assets.enamored_image.clone()),
     };
 
     if let Some(image) = sprite_image {
-        commands.spawn((
+        let child = commands.spawn((
             Name::new("Bubble Visual (Sprite)"),
             marker,
             Transform::from_translation(position)
                 .with_scale(Vec3::splat(SNORD_SPRITE_SCALE * scale)),
             Sprite::from_image(image),
             visibility,
-        )).set_parent_in_place(parent);
+        )).id();
+        commands.entity(parent).add_child(child);
     } else {
         // Use colored hexagon mesh for other colors
-        commands.spawn((
+        let child = commands.spawn((
             Name::new("Bubble Visual (Mesh)"),
             marker,
             Transform::from_translation(position),
             Mesh2d(meshes.add(RegularPolygon::new(HEX_SIZE * scale, 6))),
             MeshMaterial2d(materials.add(ColorMaterial::from_color(color.to_color()))),
             visibility,
-        )).set_parent_in_place(parent);
+        )).id();
+        commands.entity(parent).add_child(child);
     }
 }
 
@@ -293,6 +320,24 @@ fn update_aim_direction(
     aim.0 = Vec2::new(clamped_angle.sin(), clamped_angle.cos());
 }
 
+/// Update the shooter arrow rotation to match aim direction.
+fn update_shooter_arrow_rotation(
+    shooter_query: Query<&AimDirection, With<Shooter>>,
+    mut arrow_query: Query<&mut Transform, With<ShooterArrowVisual>>,
+) {
+    let Ok(aim) = shooter_query.single() else {
+        return;
+    };
+    let Ok(mut arrow_transform) = arrow_query.single_mut() else {
+        return;
+    };
+
+    // Calculate rotation angle from aim direction
+    // atan2(x, y) gives angle from vertical (Y-axis)
+    let angle = -aim.0.x.atan2(aim.0.y);
+    arrow_transform.rotation = Quat::from_rotation_z(angle);
+}
+
 /// Draw the aim line using gizmos.
 fn draw_aim_line(
     mut gizmos: Gizmos,
@@ -325,7 +370,7 @@ fn draw_aim_line(
     }
 }
 
-/// Draw a simple dotted aim line.
+/// Draw a simple dotted aim line (dark, behind shooter sprite).
 fn draw_simple_aim_line(gizmos: &mut Gizmos, start: Vec2, direction: Vec2, length: f32) {
     let segments = 15;
     let segment_length = length / segments as f32;
@@ -334,7 +379,7 @@ fn draw_simple_aim_line(gizmos: &mut Gizmos, start: Vec2, direction: Vec2, lengt
         if i % 2 == 0 {
             let seg_start = start + direction * (i as f32 * segment_length);
             let seg_end = start + direction * ((i as f32 + 0.7) * segment_length);
-            gizmos.line_2d(seg_start, seg_end, Color::srgba(1.0, 1.0, 1.0, 0.5));
+            gizmos.line_2d(seg_start, seg_end, Color::srgba(0.1, 0.1, 0.1, 0.6));
         }
     }
 }
@@ -373,8 +418,8 @@ fn draw_bouncy_aim_line(gizmos: &mut Gizmos, start: Vec2, direction: Vec2, total
             if i % 2 == 0 {
                 let seg_start = current_pos + current_dir * (i as f32 * seg_len);
                 let seg_end = current_pos + current_dir * ((i as f32 + 0.7) * seg_len);
-                let alpha = if bounces == 0 { 0.5 } else { 0.3 };
-                gizmos.line_2d(seg_start, seg_end, Color::srgba(1.0, 1.0, 1.0, alpha));
+                let alpha = if bounces == 0 { 0.6 } else { 0.4 };
+                gizmos.line_2d(seg_start, seg_end, Color::srgba(0.1, 0.1, 0.1, alpha));
             }
         }
 

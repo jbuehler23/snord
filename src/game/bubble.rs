@@ -17,6 +17,11 @@ use crate::screens::Screen;
 pub struct GameAssets {
     pub derpy_image: Handle<Image>,
     pub scared_image: Handle<Image>,
+    pub sad_image: Handle<Image>,
+    pub angry_image: Handle<Image>,
+    pub happy_image: Handle<Image>,
+    pub enamored_image: Handle<Image>,
+    pub shooter_image: Handle<Image>,
 }
 
 /// Scale factor for snord sprites (64px -> ~40px to match HEX_SIZE diameter).
@@ -41,6 +46,11 @@ pub fn load_game_assets(mut commands: Commands, asset_server: Res<AssetServer>) 
     commands.insert_resource(GameAssets {
         derpy_image: asset_server.load("images/derpy.png"),
         scared_image: asset_server.load("images/scared.png"),
+        sad_image: asset_server.load("images/sad.png"),
+        angry_image: asset_server.load("images/angry.png"),
+        happy_image: asset_server.load("images/happy.png"),
+        enamored_image: asset_server.load("images/enamored.png"),
+        shooter_image: asset_server.load("images/shooter.png"),
     });
 }
 
@@ -173,7 +183,10 @@ pub fn spawn_bubble(
         let sprite_image = match color {
             BubbleColor::Blue => Some(assets.derpy_image.clone()),
             BubbleColor::Purple => Some(assets.scared_image.clone()),
-            _ => None,
+            BubbleColor::Yellow => Some(assets.sad_image.clone()),
+            BubbleColor::Red => Some(assets.angry_image.clone()),
+            BubbleColor::Green => Some(assets.happy_image.clone()),
+            BubbleColor::Orange => Some(assets.enamored_image.clone()),
         };
 
         if let Some(image) = sprite_image {

@@ -6,11 +6,13 @@
 use bevy::prelude::*;
 
 use super::{
-    bubble::{spawn_bubble, BubbleColor},
+    bubble::{spawn_bubble, BubbleColor, GameAssets, SNORD_SPRITE_SCALE},
     grid::HexGrid,
     hex::{GridOffset, HexCoord, HEX_SIZE},
+    powerups::{PowerUp, UnlockedPowerUps},
     shooter::SHOOTER_Y,
 };
+
 use crate::{screens::Screen, PausableSystems};
 
 pub(super) fn plugin(app: &mut App) {
@@ -91,21 +93,50 @@ fn spawn_projectile(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
     mut fire_events: MessageReader<FireProjectile>,
+    powerups: Res<UnlockedPowerUps>,
+    game_assets: Res<GameAssets>,
 ) {
     for event in fire_events.read() {
-        let velocity = event.direction.normalize() * PROJECTILE_SPEED;
+        // Speedy Snord gives 25% faster projectiles
+        let speed = if powerups.has(PowerUp::SpeedySnord) {
+            PROJECTILE_SPEED * 1.25
+        } else {
+            PROJECTILE_SPEED
+        };
+        let velocity = event.direction.normalize() * speed;
 
-        commands.spawn((
-            Name::new("Projectile"),
-            Projectile {
-                velocity,
-                color: event.color,
-            },
-            Transform::from_translation(event.position.extend(5.0)),
-            Mesh2d(meshes.add(RegularPolygon::new(HEX_SIZE, 6))),
-            MeshMaterial2d(materials.add(ColorMaterial::from_color(event.color.to_color()))),
-            DespawnOnExit(Screen::Gameplay),
-        ));
+        // Check if this color uses a sprite
+        let sprite_image = match event.color {
+            BubbleColor::Blue => Some(game_assets.derpy_image.clone()),
+            BubbleColor::Purple => Some(game_assets.scared_image.clone()),
+            _ => None,
+        };
+
+        if let Some(image) = sprite_image {
+            commands.spawn((
+                Name::new("Projectile"),
+                Projectile {
+                    velocity,
+                    color: event.color,
+                },
+                Transform::from_translation(event.position.extend(5.0))
+                    .with_scale(Vec3::splat(SNORD_SPRITE_SCALE)),
+                Sprite::from_image(image),
+                DespawnOnExit(Screen::Gameplay),
+            ));
+        } else {
+            commands.spawn((
+                Name::new("Projectile"),
+                Projectile {
+                    velocity,
+                    color: event.color,
+                },
+                Transform::from_translation(event.position.extend(5.0)),
+                Mesh2d(meshes.add(RegularPolygon::new(HEX_SIZE, 6))),
+                MeshMaterial2d(materials.add(ColorMaterial::from_color(event.color.to_color()))),
+                DespawnOnExit(Screen::Gameplay),
+            ));
+        }
 
         info!("Spawned projectile at {:?} with velocity {:?}", event.position, velocity);
     }
@@ -131,6 +162,7 @@ fn check_wall_collision(
     mut landed_events: MessageWriter<BubbleLanded>,
     mut danger_events: MessageWriter<BubbleInDangerZone>,
     grid_offset: Res<GridOffset>,
+    game_assets: Res<GameAssets>,
 ) {
     for (entity, mut transform, mut projectile) in &mut query {
         let pos = transform.translation;
@@ -168,6 +200,7 @@ fn check_wall_collision(
                         coord,
                         projectile.color,
                         grid_offset.y,
+                        &game_assets,
                     );
                     landed_events.write(BubbleLanded {
                         coord,
@@ -200,8 +233,15 @@ fn check_bubble_collision(
     mut landed_events: MessageWriter<BubbleLanded>,
     mut danger_events: MessageWriter<BubbleInDangerZone>,
     grid_offset: Res<GridOffset>,
+    powerups: Res<UnlockedPowerUps>,
+    game_assets: Res<GameAssets>,
 ) {
-    let collision_distance = HEX_SIZE * 1.8; // Slightly less than 2 radii
+    // Sharpshooter reduces collision distance for more precise shots
+    let collision_distance = if powerups.has(PowerUp::Sharpshooter) {
+        HEX_SIZE * 1.5 // Tighter hitbox
+    } else {
+        HEX_SIZE * 1.8 // Default: slightly less than 2 radii
+    };
 
     // First pass: find collisions (without borrowing grid mutably)
     let mut collision: Option<(Entity, Vec2, BubbleColor)> = None;
@@ -250,6 +290,7 @@ fn check_bubble_collision(
                 snap_coord,
                 color,
                 grid_offset.y,
+                &game_assets,
             );
             landed_events.write(BubbleLanded {
                 coord: snap_coord,
@@ -273,12 +314,13 @@ fn land_projectile(
     coord: HexCoord,
     color: BubbleColor,
     grid_origin_y: f32,
+    game_assets: &GameAssets,
 ) -> Entity {
     // Despawn the projectile
     commands.entity(projectile_entity).despawn();
 
     // Spawn a new bubble at the grid position
-    let new_entity = spawn_bubble(commands, meshes, materials, coord, color, grid_origin_y);
+    let new_entity = spawn_bubble(commands, meshes, materials, coord, color, grid_origin_y, Some(game_assets));
     grid.insert(coord, new_entity);
 
     info!("Bubble landed at {} with color {:?}", coord, color);

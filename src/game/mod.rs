@@ -14,6 +14,7 @@ mod debug;
 mod grid;
 mod hex;
 mod highscore;
+pub mod powerups;
 mod projectile;
 mod shooter;
 mod state;
@@ -32,6 +33,7 @@ pub(super) fn plugin(app: &mut App) {
         cluster::plugin,
         state::plugin,
         highscore::plugin,
+        powerups::plugin,
         debug::plugin,
     ));
 }

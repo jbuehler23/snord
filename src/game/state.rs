@@ -8,15 +8,16 @@
 use bevy::prelude::*;
 
 use super::{
-    bubble::{spawn_bubble, Bubble, BubbleColor},
+    bubble::{spawn_bubble, Bubble, BubbleColor, GameAssets},
     cluster::{ClusterPopped, FloatingBubblesRemoved},
     grid::HexGrid,
     hex::{GridOffset, HexCoord, HEX_SIZE},
     highscore::{HighScores, ScoreEntry},
+    powerups::{PowerUp, PowerUpChoices, UnlockedPowerUps},
     projectile::BubbleInDangerZone,
     shooter::SHOOTER_Y,
 };
-use crate::{screens::Screen, PausableSystems, menus::Menu};
+use crate::{screens::Screen, Pause, PausableSystems, menus::Menu};
 
 pub(super) fn plugin(app: &mut App) {
     app.init_resource::<GameScore>();
@@ -26,7 +27,7 @@ pub(super) fn plugin(app: &mut App) {
 
     app.add_message::<TriggerDescent>();
 
-    app.add_systems(OnEnter(Screen::Gameplay), (reset_score, reset_level, spawn_score_ui));
+    app.add_systems(OnEnter(Screen::Gameplay), (reset_score, reset_level, reset_powerups, spawn_score_ui));
 
     app.add_systems(
         Update,
@@ -133,6 +134,11 @@ fn reset_level(mut level: ResMut<GameLevel>) {
     info!("Level reset to 1");
 }
 
+/// Reset power-ups when starting a new game.
+fn reset_powerups(mut powerups: ResMut<UnlockedPowerUps>) {
+    powerups.reset();
+}
+
 /// Handle bubble descent when triggered.
 fn handle_descent(
     mut commands: Commands,
@@ -144,6 +150,12 @@ fn handle_descent(
     mut bubble_query: Query<(&Bubble, &mut Transform)>,
     mut descent_events: MessageReader<TriggerDescent>,
     mut danger_events: MessageWriter<BubbleInDangerZone>,
+    // Power-up system
+    unlocked_powerups: Res<UnlockedPowerUps>,
+    mut powerup_choices: ResMut<PowerUpChoices>,
+    mut next_menu: ResMut<NextState<Menu>>,
+    mut next_pause: ResMut<NextState<Pause>>,
+    game_assets: Res<GameAssets>,
 ) {
     // Only process if we received a descent trigger
     if descent_events.read().next().is_none() {
@@ -173,7 +185,7 @@ fn handle_descent(
     for q in bounds.min_q..=bounds.max_q {
         let coord = HexCoord::new(q, new_row_r);
         let color = BubbleColor::random();
-        let entity = spawn_bubble(&mut commands, &mut meshes, &mut materials, coord, color, grid_offset.y);
+        let entity = spawn_bubble(&mut commands, &mut meshes, &mut materials, coord, color, grid_offset.y, Some(&game_assets));
         grid.insert(coord, entity);
     }
 
@@ -197,6 +209,18 @@ fn handle_descent(
         "Level {} - next descent in {} shots (grid_offset.y = {})",
         level.level, level.shots_until_descent, grid_offset.y
     );
+
+    // Check for power-up milestone (every 5 levels)
+    if level.level % 5 == 0 && level.level > 0 {
+        let choices = PowerUp::random_choices(level.level, &unlocked_powerups.powers);
+        if !choices.is_empty() {
+            info!("Power-up selection at level {}!", level.level);
+            powerup_choices.choices = choices;
+            powerup_choices.level = level.level;
+            next_pause.set(Pause(true));
+            next_menu.set(Menu::PowerUpSelect);
+        }
+    }
 }
 
 /// Spawn the score text UI.
@@ -243,9 +267,21 @@ fn update_score(
     mut score: ResMut<GameScore>,
     mut cluster_events: MessageReader<ClusterPopped>,
     mut floating_events: MessageReader<FloatingBubblesRemoved>,
+    powerups: Res<UnlockedPowerUps>,
 ) {
     for event in cluster_events.read() {
-        let points = event.count as u32 * POINTS_PER_BUBBLE;
+        let mut points = event.count as u32 * POINTS_PER_BUBBLE;
+
+        // Combo Snord: +50% score bonus for clusters larger than 3
+        if powerups.has(PowerUp::ComboSnord) && event.count > 3 {
+            let bonus = points / 2; // 50% bonus
+            points += bonus;
+            info!(
+                "Combo Snord bonus! +{} extra points for cluster of {}",
+                bonus, event.count
+            );
+        }
+
         score.score += points;
         score.bubbles_popped += event.count as u32;
         score.clusters_popped += 1;

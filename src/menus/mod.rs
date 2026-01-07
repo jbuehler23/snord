@@ -4,6 +4,7 @@ mod credits;
 mod gameover;
 mod main;
 mod pause;
+mod powerup_select;
 mod settings;
 
 use bevy::prelude::*;
@@ -15,8 +16,9 @@ pub(super) fn plugin(app: &mut App) {
         credits::plugin,
         gameover::plugin,
         main::plugin,
-        settings::plugin,
         pause::plugin,
+        powerup_select::plugin,
+        settings::plugin,
     ));
 }
 
@@ -29,4 +31,5 @@ pub enum Menu {
     Settings,
     Pause,
     GameOver,
+    PowerUpSelect,
 }

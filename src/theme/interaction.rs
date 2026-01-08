@@ -3,7 +3,7 @@ use bevy::prelude::*;
 use crate::{asset_tracking::LoadResource, audio::sound_effect};
 
 pub(super) fn plugin(app: &mut App) {
-    app.add_systems(Update, apply_interaction_palette);
+    app.add_systems(Update, (apply_interaction_palette, apply_image_interaction_palette));
 
     app.load_resource::<InteractionAssets>();
     app.add_observer(play_on_hover_sound_effect);
@@ -34,6 +34,31 @@ fn apply_interaction_palette(
             Interaction::Pressed => palette.pressed,
         }
         .into();
+    }
+}
+
+/// Palette for image button interactions. Add this to an entity with an
+/// [`ImageNode`] to tint the image based on the current interaction state.
+#[derive(Component, Debug, Reflect)]
+#[reflect(Component)]
+pub struct ImageInteractionPalette {
+    pub none: Color,
+    pub hovered: Color,
+    pub pressed: Color,
+}
+
+fn apply_image_interaction_palette(
+    mut palette_query: Query<
+        (&Interaction, &ImageInteractionPalette, &mut ImageNode),
+        Changed<Interaction>,
+    >,
+) {
+    for (interaction, palette, mut image_node) in &mut palette_query {
+        image_node.color = match interaction {
+            Interaction::None => palette.none,
+            Interaction::Hovered => palette.hovered,
+            Interaction::Pressed => palette.pressed,
+        };
     }
 }
 

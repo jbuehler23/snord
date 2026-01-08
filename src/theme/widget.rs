@@ -7,7 +7,7 @@ use bevy::{
     prelude::*,
 };
 
-use crate::theme::{interaction::InteractionPalette, palette::*};
+use crate::theme::{interaction::{InteractionPalette, ImageInteractionPalette}, palette::*};
 
 /// A root UI node that fills the window and centers its content.
 pub fn ui_root(name: impl Into<Cow<'static, str>>) -> impl Bundle {
@@ -128,6 +128,51 @@ where
                     )],
                 ))
                 .insert(button_bundle)
+                .observe(action);
+        })),
+    )
+}
+
+/// A button with an image background and an action defined as an [`Observer`].
+pub fn button_image<E, B, M, I>(image: Handle<Image>, width: f32, height: f32, action: I) -> impl Bundle
+where
+    E: EntityEvent,
+    B: Bundle,
+    I: IntoObserverSystem<E, B, M>,
+{
+    button_image_with_margin(image, width, height, 0.0, action)
+}
+
+/// A button with an image background, custom vertical margin, and an action defined as an [`Observer`].
+pub fn button_image_with_margin<E, B, M, I>(image: Handle<Image>, width: f32, height: f32, vertical_margin: f32, action: I) -> impl Bundle
+where
+    E: EntityEvent,
+    B: Bundle,
+    I: IntoObserverSystem<E, B, M>,
+{
+    let action = IntoObserverSystem::into_system(action);
+    (
+        Name::new("Image Button"),
+        Node::default(),
+        Children::spawn(SpawnWith(move |parent: &mut ChildSpawner| {
+            parent
+                .spawn((
+                    Name::new("Image Button Inner"),
+                    Button,
+                    ImageNode::new(image),
+                    Node {
+                        width: px(width),
+                        height: px(height),
+                        margin: UiRect::vertical(px(vertical_margin)),
+                        ..default()
+                    },
+                    // Tint the image for hover/press feedback (no BackgroundColor!)
+                    ImageInteractionPalette {
+                        none: Color::WHITE,
+                        hovered: Color::srgb(0.85, 0.85, 0.85),
+                        pressed: Color::srgb(0.7, 0.7, 0.7),
+                    },
+                ))
                 .observe(action);
         })),
     )

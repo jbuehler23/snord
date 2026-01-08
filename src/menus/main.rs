@@ -8,23 +8,60 @@ pub(super) fn plugin(app: &mut App) {
     app.add_systems(OnEnter(Menu::Main), spawn_main_menu);
 }
 
-fn spawn_main_menu(mut commands: Commands) {
+fn spawn_main_menu(mut commands: Commands, asset_server: Res<AssetServer>) {
+    let title = asset_server.load("images/title.png");
+    let play_button = asset_server.load("images/play_button.png");
+    let settings_button = asset_server.load("images/settings_button.png");
+    let credits_button = asset_server.load("images/credits_button.png");
+    #[cfg(not(target_family = "wasm"))]
+    let exit_button = asset_server.load("images/exit_button.png");
+
     commands.spawn((
-        widget::ui_root("Main Menu"),
+        Name::new("Main Menu"),
+        Node {
+            position_type: PositionType::Absolute,
+            width: Val::Percent(100.0),
+            height: Val::Percent(100.0),
+            align_items: AlignItems::Center,
+            justify_content: JustifyContent::Center,
+            flex_direction: FlexDirection::Column,
+            row_gap: Val::Px(10.0),
+            ..default()
+        },
         GlobalZIndex(2),
         DespawnOnExit(Menu::Main),
         #[cfg(not(target_family = "wasm"))]
         children![
-            widget::button("Play", enter_loading_or_gameplay_screen),
-            widget::button("Settings", open_settings_menu),
-            widget::button("Credits", open_credits_menu),
-            widget::button("Exit", exit_app),
+            (
+                Name::new("Title"),
+                ImageNode::new(title.clone()),
+                Node {
+                    width: Val::Px(400.0),
+                    height: Val::Px(120.0),
+                    margin: UiRect::bottom(Val::Px(20.0)),
+                    ..default()
+                },
+            ),
+            widget::button_image(play_button.clone(), 266.0, 105.0, enter_loading_or_gameplay_screen),
+            widget::button_image(settings_button.clone(), 266.0, 105.0, open_settings_menu),
+            widget::button_image(credits_button.clone(), 266.0, 105.0, open_credits_menu),
+            widget::button_image(exit_button.clone(), 266.0, 105.0, exit_app),
         ],
         #[cfg(target_family = "wasm")]
         children![
-            widget::button("Play", enter_loading_or_gameplay_screen),
-            widget::button("Settings", open_settings_menu),
-            widget::button("Credits", open_credits_menu),
+            (
+                Name::new("Title"),
+                ImageNode::new(title),
+                Node {
+                    width: Val::Px(400.0),
+                    height: Val::Px(120.0),
+                    margin: UiRect::bottom(Val::Px(20.0)),
+                    ..default()
+                },
+            ),
+            widget::button_image(play_button, 266.0, 105.0, enter_loading_or_gameplay_screen),
+            widget::button_image(settings_button, 266.0, 105.0, open_settings_menu),
+            widget::button_image(credits_button, 266.0, 105.0, open_credits_menu),
         ],
     ));
 }

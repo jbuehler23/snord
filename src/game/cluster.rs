@@ -13,6 +13,7 @@ use super::{
     bubble::{Bubble, BubbleColor},
     grid::HexGrid,
     hex::HexCoord,
+    polish::PopAnimation,
     projectile::BubbleLanded,
 };
 use crate::{screens::Screen, PausableSystems};
@@ -97,6 +98,7 @@ fn detect_clusters(
     mut commands: Commands,
     mut grid: ResMut<HexGrid>,
     bubble_query: Query<&Bubble>,
+    transform_query: Query<&Transform>,
     mut landed_events: MessageReader<BubbleLanded>,
     mut popped_events: MessageWriter<ClusterPopped>,
     audio_assets: Option<Res<GameAudioAssets>>,
@@ -113,10 +115,17 @@ fn detect_clusters(
                 event.coord
             );
 
-            // Remove all bubbles in the cluster
+            // Remove all bubbles in the cluster (with pop animation)
             for &coord in &cluster {
                 if let Some(entity) = grid.remove(coord) {
-                    commands.entity(entity).despawn();
+                    // Get current scale for animation
+                    let current_scale = transform_query
+                        .get(entity)
+                        .map(|t| t.scale)
+                        .unwrap_or(Vec3::ONE);
+
+                    // Add pop animation instead of instant despawn
+                    commands.entity(entity).insert(PopAnimation::new(current_scale));
                 }
             }
 
@@ -199,6 +208,7 @@ fn find_cluster(
 fn detect_floating_bubbles(
     mut commands: Commands,
     mut grid: ResMut<HexGrid>,
+    transform_query: Query<&Transform>,
     mut popped_events: MessageReader<ClusterPopped>,
     mut floating_events: MessageWriter<FloatingBubblesRemoved>,
 ) {
@@ -226,10 +236,17 @@ fn detect_floating_bubbles(
     if !floating.is_empty() {
         info!("Found {} floating bubbles to remove", floating.len());
 
-        // Remove floating bubbles
+        // Remove floating bubbles (with pop animation)
         for &coord in &floating {
             if let Some(entity) = grid.remove(coord) {
-                commands.entity(entity).despawn();
+                // Get current scale for animation
+                let current_scale = transform_query
+                    .get(entity)
+                    .map(|t| t.scale)
+                    .unwrap_or(Vec3::ONE);
+
+                // Add pop animation instead of instant despawn
+                commands.entity(entity).insert(PopAnimation::new(current_scale));
             }
         }
 

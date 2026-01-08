@@ -14,6 +14,7 @@ mod debug;
 mod grid;
 mod hex;
 mod highscore;
+mod polish;
 pub mod powerups;
 mod projectile;
 mod shooter;
@@ -34,6 +35,7 @@ pub(super) fn plugin(app: &mut App) {
         state::plugin,
         highscore::plugin,
         powerups::plugin,
+        polish::plugin,
         debug::plugin,
     ));
 }

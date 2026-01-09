@@ -2,13 +2,17 @@
 
 use bevy::prelude::*;
 
-use crate::{asset_tracking::ResourceHandles, menus::Menu, screens::Screen, theme::widget};
+use crate::{asset_tracking::ResourceHandles, audio::sound_effect, menus::Menu, screens::Screen, theme::widget};
 
 pub(super) fn plugin(app: &mut App) {
     app.add_systems(OnEnter(Menu::Main), spawn_main_menu);
 }
 
 fn spawn_main_menu(mut commands: Commands, asset_server: Res<AssetServer>) {
+    // Play the snord sound on menu enter
+    let snord_sound = asset_server.load("audio/sound_effects/snord.ogg");
+    commands.spawn(sound_effect(snord_sound));
+
     let title = asset_server.load("images/title.png");
     let play_button = asset_server.load("images/play_button.png");
     let settings_button = asset_server.load("images/settings_button.png");

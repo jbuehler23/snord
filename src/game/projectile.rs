@@ -13,7 +13,7 @@ use super::{
     shooter::SHOOTER_Y,
 };
 
-use crate::{screens::Screen, PausableSystems};
+use crate::{audio::sound_effect, screens::Screen, PausableSystems};
 
 pub(super) fn plugin(app: &mut App) {
     app.register_type::<Projectile>();
@@ -95,8 +95,12 @@ fn spawn_projectile(
     mut fire_events: MessageReader<FireProjectile>,
     powerups: Res<UnlockedPowerUps>,
     game_assets: Res<GameAssets>,
+    asset_server: Res<AssetServer>,
 ) {
     for event in fire_events.read() {
+        // Play launch sound
+        let launch_sound = asset_server.load("audio/sound_effects/launch.ogg");
+        commands.spawn(sound_effect(launch_sound));
         // Speedy Snord gives 25% faster projectiles
         let speed = if powerups.has(PowerUp::SpeedySnord) {
             PROJECTILE_SPEED * 1.25

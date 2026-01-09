@@ -232,7 +232,8 @@ fn spawn_score_ui(mut commands: Commands) {
             font_size: 24.0,
             ..default()
         },
-        TextColor(Color::WHITE),
+        // Black text for light background
+        TextColor(Color::srgb(0.1, 0.1, 0.1)),
         Node {
             position_type: PositionType::Absolute,
             top: Val::Px(10.0),

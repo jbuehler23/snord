@@ -26,6 +26,12 @@ pub struct GameAudioAssets {
     pub death_scream_1: Handle<AudioSource>,
     #[dependency]
     pub death_scream_2: Handle<AudioSource>,
+    #[dependency]
+    pub ow: Handle<AudioSource>,
+    #[dependency]
+    pub hmp: Handle<AudioSource>,
+    #[dependency]
+    pub my_little_snords: Handle<AudioSource>,
 }
 
 impl FromWorld for GameAudioAssets {
@@ -34,12 +40,30 @@ impl FromWorld for GameAudioAssets {
         Self {
             death_scream_1: assets.load("audio/sound_effects/death_scream_1.ogg"),
             death_scream_2: assets.load("audio/sound_effects/death_scream_2.ogg"),
+            ow: assets.load("audio/sound_effects/ow.ogg"),
+            hmp: assets.load("audio/sound_effects/hmp.ogg"),
+            my_little_snords: assets.load("audio/sound_effects/my_little_snords.ogg"),
+        }
+    }
+}
+
+/// Timer for random ambient sounds.
+#[derive(Resource)]
+pub struct AmbientSoundTimer {
+    pub timer: Timer,
+}
+
+impl Default for AmbientSoundTimer {
+    fn default() -> Self {
+        Self {
+            timer: Timer::from_seconds(rand::random_range(5.0..15.0), TimerMode::Once),
         }
     }
 }
 
 pub(super) fn plugin(app: &mut App) {
     app.load_resource::<GameAudioAssets>();
+    app.init_resource::<AmbientSoundTimer>();
     app.add_message::<ClusterPopped>();
     app.add_message::<FloatingBubblesRemoved>();
 
@@ -69,6 +93,40 @@ pub(super) fn plugin(app: &mut App) {
             .in_set(ClusterSystems)
             .run_if(in_state(Screen::Gameplay)),
     );
+
+    app.add_systems(
+        Update,
+        play_ambient_sounds
+            .in_set(PausableSystems)
+            .run_if(in_state(Screen::Gameplay)),
+    );
+}
+
+/// Play random ambient sounds at random intervals.
+fn play_ambient_sounds(
+    mut commands: Commands,
+    time: Res<Time>,
+    mut timer: ResMut<AmbientSoundTimer>,
+    audio_assets: Option<Res<GameAudioAssets>>,
+) {
+    timer.timer.tick(time.delta());
+
+    if timer.timer.just_finished() {
+        if let Some(ref assets) = audio_assets {
+            let mut rng = rand::rng();
+            let pitch = rng.random_range(0.8..1.2);
+
+            // Only play my_little_snords as ambient background sound
+            commands.spawn(sound_effect_with_settings(
+                assets.my_little_snords.clone(),
+                pitch,
+                0.4,
+            ));
+        }
+
+        // Reset timer with new random duration (5-15 seconds)
+        timer.timer = Timer::from_seconds(rand::random_range(5.0..15.0), TimerMode::Once);
+    }
 }
 
 /// System set for cluster detection systems.
@@ -148,6 +206,18 @@ fn detect_clusters(
                 color: event.color,
                 count: cluster.len(),
             });
+        } else {
+            // No match - play random "ow" or "hmp" sound at random pitch
+            if let Some(ref assets) = audio_assets {
+                let mut rng = rand::rng();
+                let pitch = rng.random_range(0.7..1.3);
+                let sound = if rng.random_bool(0.5) {
+                    assets.ow.clone()
+                } else {
+                    assets.hmp.clone()
+                };
+                commands.spawn(sound_effect_with_settings(sound, pitch, 1.0));
+            }
         }
     }
 }

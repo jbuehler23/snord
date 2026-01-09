@@ -1,13 +1,13 @@
 use bevy::prelude::*;
 
-/// #ddd369
-pub const LABEL_TEXT: Color = Color::srgb(0.867, 0.827, 0.412);
+/// Black text for light backgrounds
+pub const LABEL_TEXT: Color = Color::srgb(0.1, 0.1, 0.1);
 
-/// #fcfbcc
-pub const HEADER_TEXT: Color = Color::srgb(0.988, 0.984, 0.800);
+/// Black text for headers
+pub const HEADER_TEXT: Color = Color::srgb(0.1, 0.1, 0.1);
 
-/// #ececec
-pub const BUTTON_TEXT: Color = Color::srgb(0.925, 0.925, 0.925);
+/// Black text for buttons
+pub const BUTTON_TEXT: Color = Color::srgb(0.1, 0.1, 0.1);
 /// #4666bf
 pub const BUTTON_BACKGROUND: Color = Color::srgb(0.275, 0.400, 0.750);
 /// #6299d1

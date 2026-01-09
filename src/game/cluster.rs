@@ -47,23 +47,11 @@ impl FromWorld for GameAudioAssets {
     }
 }
 
-/// Timer for random ambient sounds.
-#[derive(Resource)]
-pub struct AmbientSoundTimer {
-    pub timer: Timer,
-}
-
-impl Default for AmbientSoundTimer {
-    fn default() -> Self {
-        Self {
-            timer: Timer::from_seconds(rand::random_range(5.0..15.0), TimerMode::Once),
-        }
-    }
-}
+/// Minimum cluster size to trigger "my_little_snords" combo sound.
+const COMBO_SOUND_THRESHOLD: usize = 5;
 
 pub(super) fn plugin(app: &mut App) {
     app.load_resource::<GameAudioAssets>();
-    app.init_resource::<AmbientSoundTimer>();
     app.add_message::<ClusterPopped>();
     app.add_message::<FloatingBubblesRemoved>();
 
@@ -90,40 +78,6 @@ pub(super) fn plugin(app: &mut App) {
             .in_set(ClusterSystems)
             .run_if(in_state(Screen::Gameplay)),
     );
-
-    app.add_systems(
-        Update,
-        play_ambient_sounds
-            .in_set(PausableSystems)
-            .run_if(in_state(Screen::Gameplay)),
-    );
-}
-
-/// Play random ambient sounds at random intervals.
-fn play_ambient_sounds(
-    mut commands: Commands,
-    time: Res<Time>,
-    mut timer: ResMut<AmbientSoundTimer>,
-    audio_assets: Option<Res<GameAudioAssets>>,
-) {
-    timer.timer.tick(time.delta());
-
-    if timer.timer.just_finished() {
-        if let Some(ref assets) = audio_assets {
-            let mut rng = rand::rng();
-            let pitch = rng.random_range(0.8..1.2);
-
-            // Only play my_little_snords as ambient background sound
-            commands.spawn(sound_effect_with_settings(
-                assets.my_little_snords.clone(),
-                pitch,
-                0.4,
-            ));
-        }
-
-        // Reset timer with new random duration (5-15 seconds)
-        timer.timer = Timer::from_seconds(rand::random_range(5.0..15.0), TimerMode::Once);
-    }
 }
 
 /// System set for cluster detection systems.
@@ -199,6 +153,20 @@ fn detect_clusters(
                 // Random pitch (0.9 to 1.1) for subtle variety
                 let pitch = rng.random_range(0.9..1.1);
                 commands.spawn(sound_effect_with_settings(scream, pitch, 1.0));
+
+                // Play "my_little_snords" combo sound for big clusters (5+)
+                if cluster.len() >= COMBO_SOUND_THRESHOLD {
+                    let combo_pitch = rng.random_range(0.6..0.8);
+                    commands.spawn(sound_effect_with_settings(
+                        assets.my_little_snords.clone(),
+                        combo_pitch,
+                        1.0,
+                    ));
+                    info!(
+                        "Combo sound! Cluster of {} triggered my_little_snords",
+                        cluster.len()
+                    );
+                }
             }
 
             popped_events.write(ClusterPopped {
@@ -254,18 +222,17 @@ fn find_cluster(
     // Continue BFS for neighbors
     while let Some(coord) = queue.pop_front() {
         // Check if this cell has a bubble of the right color
-        if let Some(entity) = grid.get(coord) {
-            if let Ok(bubble) = bubble_query.get(entity) {
-                if bubble.color == target_color {
-                    cluster.push(coord);
+        if let Some(entity) = grid.get(coord)
+            && let Ok(bubble) = bubble_query.get(entity)
+            && bubble.color == target_color
+        {
+            cluster.push(coord);
 
-                    // Add unvisited neighbors to the queue
-                    for neighbor in coord.neighbors() {
-                        if !visited.contains(&neighbor) {
-                            visited.insert(neighbor);
-                            queue.push_back(neighbor);
-                        }
-                    }
+            // Add unvisited neighbors to the queue
+            for neighbor in coord.neighbors() {
+                if !visited.contains(&neighbor) {
+                    visited.insert(neighbor);
+                    queue.push_back(neighbor);
                 }
             }
         }

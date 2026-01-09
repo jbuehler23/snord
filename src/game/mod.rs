@@ -60,5 +60,14 @@ pub fn spawn_game(mut commands: Commands, asset_server: Res<AssetServer>) {
         DespawnOnExit(Screen::Gameplay),
     ));
 
+    // Spawn danger line indicator (Y=-170, overlays game panel)
+    let danger_line_image = asset_server.load("images/danger_line.png");
+    commands.spawn((
+        Name::new("Danger Line"),
+        Sprite::from_image(danger_line_image),
+        Transform::from_xyz(0.0, -170.0, 0.0), // Z=0 to overlay game panel
+        DespawnOnExit(Screen::Gameplay),
+    ));
+
     info!("Game spawned - bubble shooter ready!");
 }

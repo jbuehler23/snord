@@ -126,11 +126,11 @@ impl HighScores {
         };
 
         // Create parent directory if needed
-        if let Some(parent) = path.parent() {
-            if let Err(e) = fs::create_dir_all(parent) {
-                warn!("Failed to create high scores directory: {}", e);
-                return;
-            }
+        if let Some(parent) = path.parent()
+            && let Err(e) = fs::create_dir_all(parent)
+        {
+            warn!("Failed to create high scores directory: {}", e);
+            return;
         }
 
         match serde_json::to_string_pretty(self) {

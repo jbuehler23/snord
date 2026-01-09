@@ -134,14 +134,14 @@ impl HexCoord {
     ///
     /// Odd rows are shifted right by half a hex width, creating a rectangular grid.
     /// Uses the default GRID_ORIGIN_Y constant.
-    pub fn to_pixel(&self, size: f32) -> Vec2 {
+    pub fn to_pixel(self, size: f32) -> Vec2 {
         self.to_pixel_with_offset(size, GRID_ORIGIN_Y)
     }
 
     /// Convert offset hex coordinates to pixel (world) position with custom grid origin.
     ///
     /// Use this version when the grid origin has changed (e.g., after descent).
-    pub fn to_pixel_with_offset(&self, size: f32, grid_origin_y: f32) -> Vec2 {
+    pub fn to_pixel_with_offset(self, size: f32, grid_origin_y: f32) -> Vec2 {
         // Odd rows shift right by half a hex width
         let row_offset = if self.r % 2 != 0 { 0.5 } else { 0.0 };
         let x = size * SQRT_3 * (self.q as f32 + row_offset);
@@ -183,14 +183,14 @@ impl HexCoord {
     /// Get the 6 corner vertices of this hex in world coordinates.
     ///
     /// Useful for debug drawing. Returns corners in order for drawing a polygon.
-    pub fn corners(&self, size: f32) -> [Vec2; 6] {
+    pub fn corners(self, size: f32) -> [Vec2; 6] {
         let center = self.to_pixel(size);
         let mut corners = [Vec2::ZERO; 6];
 
-        for i in 0..6 {
+        for (i, corner) in corners.iter_mut().enumerate() {
             // For pointy-top, first corner is at 30 degrees
             let angle = std::f32::consts::PI / 180.0 * (60.0 * i as f32 + 30.0);
-            corners[i] = Vec2::new(center.x + size * angle.cos(), center.y + size * angle.sin());
+            *corner = Vec2::new(center.x + size * angle.cos(), center.y + size * angle.sin());
         }
 
         corners

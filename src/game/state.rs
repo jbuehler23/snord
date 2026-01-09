@@ -41,7 +41,6 @@ pub(super) fn plugin(app: &mut App) {
             check_win_condition,
             check_lose_condition,
             check_danger_zone_game_over,
-            draw_danger_line,
         )
             .in_set(PausableSystems)
             .run_if(in_state(Screen::Gameplay)),
@@ -107,7 +106,7 @@ const POINTS_PER_BUBBLE: u32 = 10;
 const FLOATING_BONUS_MULTIPLIER: u32 = 2;
 
 /// The Y position below which bubbles trigger game over.
-const DANGER_LINE_Y: f32 = SHOOTER_Y + 80.0;
+const DANGER_LINE_Y: f32 = SHOOTER_Y + 40.0;
 
 /// Resource tracking the current game score.
 #[derive(Resource, Debug, Default, Reflect)]
@@ -141,6 +140,8 @@ fn reset_level(mut level: ResMut<GameLevel>) {
 /// Reset power-ups when starting a new game.
 fn reset_powerups(mut powerups: ResMut<UnlockedPowerUps>) {
     powerups.reset();
+    // TESTING: Start with Bouncy Snord unlocked
+    powerups.add(PowerUp::BouncySnord);
 }
 
 /// Handle bubble descent when triggered.
@@ -203,15 +204,15 @@ fn handle_descent(
 
     // Check for game over (any bubble below danger line after descent)
     for (_coord, &entity) in grid.iter() {
-        if let Ok((_, transform)) = bubble_query.get(entity) {
-            if transform.translation.y < DANGER_LINE_Y {
-                info!(
-                    "GAME OVER! Descent pushed bubble into danger zone at y={}",
-                    transform.translation.y
-                );
-                danger_events.write(BubbleInDangerZone);
-                return;
-            }
+        if let Ok((_, transform)) = bubble_query.get(entity)
+            && transform.translation.y < DANGER_LINE_Y
+        {
+            info!(
+                "GAME OVER! Descent pushed bubble into danger zone at y={}",
+                transform.translation.y
+            );
+            danger_events.write(BubbleInDangerZone);
+            return;
         }
     }
 
@@ -223,7 +224,7 @@ fn handle_descent(
     );
 
     // Check for power-up milestone (every 5 levels)
-    if level.level % 5 == 0 && level.level > 0 {
+    if level.level > 0 && level.level.is_multiple_of(5) {
         let choices = PowerUp::random_choices(level.level, &unlocked_powerups.powers);
         if !choices.is_empty() {
             info!("Power-up selection at level {}!", level.level);
@@ -236,20 +237,24 @@ fn handle_descent(
 }
 
 /// Spawn the score text UI.
-fn spawn_score_ui(mut commands: Commands) {
+fn spawn_score_ui(mut commands: Commands, game_font: Res<crate::theme::GameFont>) {
     commands.spawn((
         ScoreText,
         Text::new("Score: 0"),
         TextFont {
-            font_size: 24.0,
+            font: game_font.0.clone(),
+            font_size: 20.0,
             ..default()
         },
+        TextLayout::new_with_justify(bevy::text::Justify::Center),
         // Black text for light background
         TextColor(Color::srgb(0.1, 0.1, 0.1)),
         Node {
             position_type: PositionType::Absolute,
-            top: Val::Px(10.0),
-            left: Val::Px(10.0),
+            bottom: Val::Px(10.0),
+            left: Val::Px(0.0),
+            width: Val::Percent(100.0),
+            justify_content: JustifyContent::Center,
             ..default()
         },
         DespawnOnExit(Screen::Gameplay),
@@ -267,7 +272,7 @@ fn update_score_ui(
     }
     for mut text in &mut query {
         **text = format!(
-            "Score: {}\nLevel: {}\nShots: {}",
+            "Score: {}     Level: {}     Shots: {}",
             score.score,
             level.level,
             level.shots_remaining()
@@ -351,24 +356,24 @@ fn check_lose_condition(
 ) {
     // Check if any bubble is below the danger line
     for (_coord, &entity) in grid.iter() {
-        if let Ok(transform) = bubble_query.get(entity) {
-            if transform.translation.y < DANGER_LINE_Y {
-                info!(
-                    "GAME OVER! Bubble reached danger zone. Final score: {}",
-                    score.score
-                );
+        if let Ok(transform) = bubble_query.get(entity)
+            && transform.translation.y < DANGER_LINE_Y
+        {
+            info!(
+                "GAME OVER! Bubble reached danger zone. Final score: {}",
+                score.score
+            );
 
-                // Save high score if it qualifies
-                let entry = ScoreEntry::new(score.score, score.bubbles_popped);
-                if high_scores.add_score(entry) {
-                    info!("New high score!");
-                    high_scores.save();
-                }
-
-                // Show game over screen
-                next_menu.set(Menu::GameOver);
-                return;
+            // Save high score if it qualifies
+            let entry = ScoreEntry::new(score.score, score.bubbles_popped);
+            if high_scores.add_score(entry) {
+                info!("New high score!");
+                high_scores.save();
             }
+
+            // Show game over screen
+            next_menu.set(Menu::GameOver);
+            return;
         }
     }
 }
@@ -398,12 +403,3 @@ fn check_danger_zone_game_over(
     }
 }
 
-/// Draw the danger line indicator.
-fn draw_danger_line(mut gizmos: Gizmos) {
-    let danger_y = DANGER_LINE_Y;
-    gizmos.line_2d(
-        Vec2::new(-400.0, danger_y),
-        Vec2::new(400.0, danger_y),
-        Color::srgba(1.0, 0.2, 0.2, 0.5),
-    );
-}

@@ -5,7 +5,7 @@ use bevy::{ecs::spawn::SpawnWith, prelude::*};
 use crate::{
     game::powerups::{PowerUp, PowerUpChoices, UnlockedPowerUps},
     menus::Menu,
-    theme::{interaction::ImageInteractionPalette, palette::*},
+    theme::{GameFont, interaction::ImageInteractionPalette, palette::*},
 };
 
 pub(super) fn plugin(app: &mut App) {
@@ -20,10 +20,12 @@ fn spawn_powerup_menu(
     mut commands: Commands,
     choices: Res<PowerUpChoices>,
     asset_server: Res<AssetServer>,
+    game_font: Res<GameFont>,
 ) {
     let level = choices.level;
     let power_choices = choices.choices.clone();
     let button_template = asset_server.load("images/button_template.png");
+    let font = game_font.0.clone();
 
     commands.spawn((
         Name::new("Power-Up Selection Menu"),
@@ -46,20 +48,29 @@ fn spawn_powerup_menu(
             // Header
             parent.spawn((
                 Name::new("Header"),
-                Text(format!("Level {} - Choose Your Power!", level)),
-                TextFont::from_font_size(36.0),
+                Text(format!("Level {level} - Choose Your Power!")),
+                TextFont {
+                    font: font.clone(),
+                    font_size: 36.0,
+                    ..default()
+                },
                 TextColor(HEADER_TEXT),
             ));
 
             // Spawn buttons for each power-up choice
             for power in &power_choices {
-                spawn_powerup_button(parent, *power, button_template.clone());
+                spawn_powerup_button(parent, *power, button_template.clone(), font.clone());
             }
         })),
     ));
 }
 
-fn spawn_powerup_button(parent: &mut ChildSpawner, power: PowerUp, button_image: Handle<Image>) {
+fn spawn_powerup_button(
+    parent: &mut ChildSpawner,
+    power: PowerUp,
+    button_image: Handle<Image>,
+    font: Handle<Font>,
+) {
     parent
         .spawn((
             Name::new(format!("PowerUp Button: {}", power.name())),
@@ -90,14 +101,22 @@ fn spawn_powerup_button(parent: &mut ChildSpawner, power: PowerUp, button_image:
                     // Power-up name
                     inner.spawn((
                         Text(power.name().to_string()),
-                        TextFont::from_font_size(24.0),
+                        TextFont {
+                            font: font.clone(),
+                            font_size: 24.0,
+                            ..default()
+                        },
                         TextColor(BUTTON_TEXT),
                         Pickable::IGNORE,
                     ));
                     // Power-up description
                     inner.spawn((
                         Text(power.description().to_string()),
-                        TextFont::from_font_size(14.0),
+                        TextFont {
+                            font: font.clone(),
+                            font_size: 14.0,
+                            ..default()
+                        },
                         TextColor(Color::srgb(0.3, 0.3, 0.3)),
                         Pickable::IGNORE,
                     ));

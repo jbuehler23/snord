@@ -1,11 +1,11 @@
 //! The pause menu.
 
-use bevy::{input::common_conditions::input_just_pressed, prelude::*};
+use bevy::{ecs::spawn::SpawnWith, input::common_conditions::input_just_pressed, prelude::*};
 
 use crate::{
     menus::Menu,
     screens::Screen,
-    theme::{palette::HEADER_TEXT, widget},
+    theme::{GameFont, palette::HEADER_TEXT, widget},
 };
 
 pub(super) fn plugin(app: &mut App) {
@@ -16,10 +16,15 @@ pub(super) fn plugin(app: &mut App) {
     );
 }
 
-fn spawn_pause_menu(mut commands: Commands, asset_server: Res<AssetServer>) {
+fn spawn_pause_menu(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    game_font: Res<GameFont>,
+) {
     let play_button = asset_server.load("images/play_button.png");
     let settings_button = asset_server.load("images/settings_button.png");
     let exit_button = asset_server.load("images/exit_button.png");
+    let font = game_font.0.clone();
 
     commands.spawn((
         Name::new("Pause Menu"),
@@ -37,21 +42,25 @@ fn spawn_pause_menu(mut commands: Commands, asset_server: Res<AssetServer>) {
         BackgroundColor(Color::srgba(0.96, 0.92, 0.84, 0.95)),
         GlobalZIndex(2),
         DespawnOnExit(Menu::Pause),
-        children![
-            (
+        Children::spawn(SpawnWith(move |parent: &mut ChildSpawner| {
+            parent.spawn((
                 Name::new("Pause Header"),
                 Text("Game Paused".to_string()),
-                TextFont::from_font_size(48.0),
+                TextFont {
+                    font: font.clone(),
+                    font_size: 48.0,
+                    ..default()
+                },
                 TextColor(HEADER_TEXT),
                 Node {
                     margin: UiRect::bottom(Val::Px(20.0)),
                     ..default()
                 },
-            ),
-            widget::button_image(play_button, 266.0, 105.0, close_menu),
-            widget::button_image(settings_button, 266.0, 105.0, open_settings_menu),
-            widget::button_image(exit_button, 266.0, 105.0, quit_to_title),
-        ],
+            ));
+            parent.spawn(widget::button_image(play_button, 266.0, 105.0, close_menu));
+            parent.spawn(widget::button_image(settings_button, 266.0, 105.0, open_settings_menu));
+            parent.spawn(widget::button_image(exit_button, 266.0, 105.0, quit_to_title));
+        })),
     ));
 }
 

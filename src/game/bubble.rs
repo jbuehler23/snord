@@ -22,6 +22,8 @@ pub struct GameAssets {
     pub happy_image: Handle<Image>,
     pub enamored_image: Handle<Image>,
     pub shooter_image: Handle<Image>,
+    pub guide_line_image: Handle<Image>,
+    pub doodle_images: Vec<Handle<Image>>,
 }
 
 /// Scale factor for snord sprites (64px -> ~40px to match HEX_SIZE diameter).
@@ -40,6 +42,12 @@ pub(super) fn plugin(app: &mut App) {
     // Spawn initial bubbles when entering gameplay
     app.add_systems(OnEnter(Screen::Gameplay), spawn_initial_bubbles);
 
+    // Spawn background doodles after assets are loaded
+    app.add_systems(
+        OnEnter(Screen::Gameplay),
+        spawn_background_doodles.after(load_game_assets),
+    );
+
     // Cleanup bubbles when leaving gameplay
     app.add_systems(OnExit(Screen::Gameplay), cleanup_bubbles);
 }
@@ -54,6 +62,14 @@ pub fn load_game_assets(mut commands: Commands, asset_server: Res<AssetServer>) 
         happy_image: asset_server.load("images/happy.png"),
         enamored_image: asset_server.load("images/enamored.png"),
         shooter_image: asset_server.load("images/shooter.png"),
+        guide_line_image: asset_server.load("images/guide_line.png"),
+        doodle_images: vec![
+            asset_server.load("images/doodle_1.png"),
+            asset_server.load("images/doodle_2.png"),
+            asset_server.load("images/doodle_3.png"),
+            asset_server.load("images/doodle_4.png"),
+            asset_server.load("images/doodle_5.png"),
+        ],
     });
 }
 
@@ -73,7 +89,7 @@ pub enum BubbleColor {
 
 impl BubbleColor {
     /// Get the actual color for rendering.
-    pub fn to_color(&self) -> Color {
+    pub fn to_color(self) -> Color {
         match self {
             BubbleColor::Red => Color::srgb(0.9, 0.2, 0.2),
             BubbleColor::Blue => Color::srgb(0.2, 0.4, 0.9),
@@ -237,4 +253,73 @@ pub fn spawn_bubble(
 fn cleanup_bubbles(mut grid: ResMut<HexGrid>) {
     grid.clear();
     info!("Cleared bubble grid");
+}
+
+/// Spawn decorative doodles in the background on left/right sides of the game area.
+fn spawn_background_doodles(mut commands: Commands, game_assets: Res<GameAssets>) {
+    let mut rng = rand::rng();
+
+    // Game bounds are -245 to +245, window is -400 to +400
+    // Left margin: -400 to -260 (keeping buffer from game)
+    // Right margin: +260 to +400
+    const DOODLE_SIZE: f32 = 70.0; // Approximate size of doodle at scale 1.0
+    const SCALE: f32 = 0.45; // Smaller scale to fit more
+    const CELL_SIZE: f32 = DOODLE_SIZE * SCALE; // Grid cell size (~31px)
+    const JITTER: f32 = 12.0; // Random offset to break up grid pattern
+
+    // Define margin boundaries (stay away from game area)
+    const LEFT_MIN: f32 = -395.0;
+    const LEFT_MAX: f32 = -260.0;
+    const RIGHT_MIN: f32 = 260.0;
+    const RIGHT_MAX: f32 = 395.0;
+    const Y_MIN: f32 = -290.0;
+    const Y_MAX: f32 = 290.0;
+
+    let margin_width = LEFT_MAX - LEFT_MIN; // ~130px
+    let margin_height = Y_MAX - Y_MIN; // ~580px
+
+    // Calculate grid dimensions
+    let cols = (margin_width / CELL_SIZE).floor() as i32;
+    let rows = (margin_height / CELL_SIZE).floor() as i32;
+
+    let mut count = 0;
+
+    // Spawn doodles on both sides using grid placement
+    for (min_x, _max_x) in [(LEFT_MIN, LEFT_MAX), (RIGHT_MIN, RIGHT_MAX)] {
+        for col in 0..cols {
+            for row in 0..rows {
+                // Grid position with small jitter
+                let base_x = min_x + (col as f32 + 0.5) * CELL_SIZE;
+                let base_y = Y_MIN + (row as f32 + 0.5) * CELL_SIZE;
+
+                let x = base_x + rng.random_range(-JITTER..JITTER);
+                let y = base_y + rng.random_range(-JITTER..JITTER);
+
+                // Pick a random doodle image
+                let doodle_idx = rng.random_range(0..game_assets.doodle_images.len());
+                let image = game_assets.doodle_images[doodle_idx].clone();
+
+                // Random rotation (full 360 degrees)
+                let rotation = rng.random_range(0.0..std::f32::consts::TAU);
+
+                // Slight scale variation
+                let scale = SCALE + rng.random_range(-0.05..0.05);
+
+                commands.spawn((
+                    Name::new(format!("Background Doodle {}", doodle_idx + 1)),
+                    Transform::from_translation(Vec3::new(x, y, -1.0))
+                        .with_rotation(Quat::from_rotation_z(rotation))
+                        .with_scale(Vec3::splat(scale)),
+                    Sprite::from_image(image),
+                    DespawnOnExit(Screen::Gameplay),
+                ));
+                count += 1;
+            }
+        }
+    }
+
+    info!(
+        "Spawned {} background doodles ({}x{} grid per side)",
+        count, cols, rows
+    );
 }

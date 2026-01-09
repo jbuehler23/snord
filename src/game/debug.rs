@@ -11,8 +11,6 @@ use bevy::{color::palettes::css, input::common_conditions::input_just_pressed, p
 use super::{
     grid::HexGrid,
     hex::{HEX_SIZE, HexCoord},
-    projectile::{DANGER_LINE_Y, LEFT_WALL, RIGHT_WALL, TOP_WALL},
-    shooter::SHOOTER_Y,
 };
 use crate::screens::Screen;
 
@@ -31,8 +29,6 @@ pub(super) fn plugin(app: &mut App) {
         draw_debug_grid.run_if(in_state(Screen::Gameplay).and(debug_visible)),
     );
 
-    // Always draw walls during gameplay
-    app.add_systems(Update, draw_walls.run_if(in_state(Screen::Gameplay)));
 }
 
 /// Resource to track if debug visualization is visible.
@@ -132,36 +128,3 @@ fn draw_bounds_outline(gizmos: &mut Gizmos, bounds: &super::grid::GridBounds, si
     }
 }
 
-/// Draw the walls and play area boundaries (always visible during gameplay).
-fn draw_walls(mut gizmos: Gizmos) {
-    let wall_color = css::ORANGE.with_alpha(0.8);
-    let danger_color = css::RED.with_alpha(0.6);
-
-    // Left wall
-    gizmos.line_2d(
-        Vec2::new(LEFT_WALL, SHOOTER_Y - 50.0),
-        Vec2::new(LEFT_WALL, TOP_WALL + 50.0),
-        wall_color,
-    );
-
-    // Right wall
-    gizmos.line_2d(
-        Vec2::new(RIGHT_WALL, SHOOTER_Y - 50.0),
-        Vec2::new(RIGHT_WALL, TOP_WALL + 50.0),
-        wall_color,
-    );
-
-    // Top wall
-    gizmos.line_2d(
-        Vec2::new(LEFT_WALL, TOP_WALL),
-        Vec2::new(RIGHT_WALL, TOP_WALL),
-        wall_color,
-    );
-
-    // Danger line (game over zone)
-    gizmos.line_2d(
-        Vec2::new(LEFT_WALL, DANGER_LINE_Y),
-        Vec2::new(RIGHT_WALL, DANGER_LINE_Y),
-        danger_color,
-    );
-}

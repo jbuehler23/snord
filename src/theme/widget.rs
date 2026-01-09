@@ -12,6 +12,15 @@ use crate::theme::{
     palette::*,
 };
 
+/// Create a TextFont with the custom game font.
+pub fn game_font(font: Handle<Font>, size: f32) -> TextFont {
+    TextFont {
+        font,
+        font_size: size,
+        ..default()
+    }
+}
+
 /// A root UI node that fills the window and centers its content.
 pub fn ui_root(name: impl Into<Cow<'static, str>>) -> impl Bundle {
     (

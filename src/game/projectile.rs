@@ -86,7 +86,7 @@ pub const RIGHT_WALL: f32 = 245.0;
 pub const TOP_WALL: f32 = 280.0;
 
 /// Danger line Y position - bubbles landing below this trigger game over.
-pub const DANGER_LINE_Y: f32 = SHOOTER_Y + 80.0;
+pub const DANGER_LINE_Y: f32 = SHOOTER_Y + 40.0;
 
 /// Spawn a projectile when the fire message is received.
 fn spawn_projectile(

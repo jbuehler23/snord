@@ -11,7 +11,7 @@ use super::{
     grid::HexGrid,
     hex::HEX_SIZE,
     powerups::{PowerUp, UnlockedPowerUps},
-    projectile::{FireProjectile, LEFT_WALL, Projectile, RIGHT_WALL},
+    projectile::{FireProjectile, Projectile, LEFT_WALL, RIGHT_WALL, TOP_WALL},
     state::{GameLevel, TriggerDescent},
 };
 use crate::{PausableSystems, screens::Screen};
@@ -33,25 +33,22 @@ pub(super) fn plugin(app: &mut App) {
         Update,
         (
             update_aim_direction,
-            update_shooter_arrow_rotation,
-            draw_aim_line,
+            update_shooter_visuals,
             handle_fire_input,
             reload_shooter,
             update_fortune_snord_visibility,
+            draw_bounce_trajectory,
         )
             .in_set(PausableSystems)
             .run_if(in_state(Screen::Gameplay)),
     );
 }
 
-/// The Y position of the shooter (bottom of play area).
-pub const SHOOTER_Y: f32 = -250.0;
+/// The Y position of the shooter (in the danger zone area).
+pub const SHOOTER_Y: f32 = -210.0;
 
 /// Maximum angle from vertical (in radians) - prevents shooting too horizontally.
 const MAX_AIM_ANGLE: f32 = 1.3; // About 75 degrees
-
-/// Base length of the aim line in pixels (doubled with Eagle Eye power-up).
-const AIM_LINE_LENGTH: f32 = 150.0;
 
 /// Marker component for the shooter entity.
 #[derive(Component, Debug, Clone, Reflect)]
@@ -120,6 +117,14 @@ struct ThirdNextBubbleVisual;
 #[derive(Component)]
 struct ShooterArrowVisual;
 
+/// Marker for trajectory segment visuals (used by Bouncy Snord).
+/// The index indicates which segment (0 = first, 1 = after first bounce, etc.)
+#[derive(Component)]
+struct TrajectorySegment(usize);
+
+/// Maximum number of trajectory segments to show (initial + bounces).
+const MAX_TRAJECTORY_SEGMENTS: usize = 4;
+
 /// Spawn the shooter at the bottom of the screen.
 fn spawn_shooter(
     mut commands: Commands,
@@ -169,7 +174,22 @@ fn spawn_shooter(
         .id();
     commands.entity(shooter_entity).add_child(arrow);
 
-    // Spawn preview bubble visuals as children
+    // Spawn trajectory segment sprites (for Bouncy Snord powerup)
+    // These are positioned in world space since they need to follow bounce paths
+    // The guide_line image is 300px wide (horizontal), we rotate it to be vertical
+    for i in 0..MAX_TRAJECTORY_SEGMENTS {
+        commands.spawn((
+            Name::new(format!("Trajectory Segment {}", i)),
+            TrajectorySegment(i),
+            Transform::from_translation(Vec3::new(0.0, 0.0, 1.5)),
+            Sprite::from_image(game_assets.guide_line_image.clone()),
+            bevy::sprite::Anchor::CENTER_LEFT,
+            Visibility::Hidden,
+            DespawnOnExit(Screen::Gameplay),
+        ));
+    }
+
+    // Spawn preview bubble visuals as children (larger scales for visibility)
     spawn_bubble_visual(
         &mut commands,
         &mut meshes,
@@ -178,24 +198,10 @@ fn spawn_shooter(
         shooter_entity,
         loaded_color,
         Vec3::ZERO,
-        1.0,
+        1.5,
         LoadedBubbleVisual,
         Visibility::Inherited,
     );
-
-    // Base/platform visual
-    let base = commands
-        .spawn((
-            Name::new("Shooter Base"),
-            Sprite {
-                color: Color::srgb(0.3, 0.3, 0.35),
-                custom_size: Some(Vec2::new(HEX_SIZE * 3.0, HEX_SIZE * 0.5)),
-                ..default()
-            },
-            Transform::from_xyz(0.0, -HEX_SIZE * 1.2, -0.1),
-        ))
-        .id();
-    commands.entity(shooter_entity).add_child(base);
 
     spawn_bubble_visual(
         &mut commands,
@@ -204,8 +210,8 @@ fn spawn_shooter(
         &game_assets,
         shooter_entity,
         next_color,
-        Vec3::new(HEX_SIZE * 3.0, 0.0, 0.0),
-        0.6,
+        Vec3::new(HEX_SIZE * 3.5, 0.0, 0.0),
+        1.0,
         NextBubbleVisual,
         Visibility::Inherited,
     );
@@ -217,8 +223,8 @@ fn spawn_shooter(
         &game_assets,
         shooter_entity,
         second_next_color,
-        Vec3::new(HEX_SIZE * 4.5, 0.0, 0.0),
-        0.5,
+        Vec3::new(HEX_SIZE * 5.5, 0.0, 0.0),
+        0.8,
         SecondNextBubbleVisual,
         Visibility::Hidden,
     );
@@ -230,8 +236,8 @@ fn spawn_shooter(
         &game_assets,
         shooter_entity,
         third_next_color,
-        Vec3::new(HEX_SIZE * 5.8, 0.0, 0.0),
-        0.4,
+        Vec3::new(HEX_SIZE * 7.3, 0.0, 0.0),
+        0.65,
         ThirdNextBubbleVisual,
         Visibility::Hidden,
     );
@@ -334,116 +340,38 @@ fn update_aim_direction(
     aim.0 = Vec2::new(clamped_angle.sin(), clamped_angle.cos());
 }
 
-/// Update the shooter arrow rotation to match aim direction.
-fn update_shooter_arrow_rotation(
+/// Update the shooter arrow visual (rotation, scale, visibility based on powerups).
+fn update_shooter_visuals(
     shooter_query: Query<&AimDirection, With<Shooter>>,
-    mut arrow_query: Query<&mut Transform, With<ShooterArrowVisual>>,
+    mut arrow_query: Query<(&mut Transform, &mut Visibility), With<ShooterArrowVisual>>,
+    powerups: Res<UnlockedPowerUps>,
 ) {
     let Ok(aim) = shooter_query.single() else {
-        return;
-    };
-    let Ok(mut arrow_transform) = arrow_query.single_mut() else {
         return;
     };
 
     // Calculate rotation angle from aim direction
     // atan2(x, y) gives angle from vertical (Y-axis)
-    let angle = -aim.0.x.atan2(aim.0.y);
-    arrow_transform.rotation = Quat::from_rotation_z(angle);
-}
+    let aim_angle = -aim.0.x.atan2(aim.0.y);
 
-/// Draw the aim line using gizmos.
-fn draw_aim_line(
-    mut gizmos: Gizmos,
-    shooter_query: Query<(&Transform, &AimDirection, &ShooterState), With<Shooter>>,
-    powerups: Res<UnlockedPowerUps>,
-) {
-    let Ok((transform, aim, state)) = shooter_query.single() else {
-        return;
-    };
+    // Update arrow rotation, scale, and visibility
+    if let Ok((mut arrow_transform, mut arrow_visibility)) = arrow_query.single_mut() {
+        arrow_transform.rotation = Quat::from_rotation_z(aim_angle);
 
-    // Don't draw aim line while reloading
-    if *state == ShooterState::Reloading {
-        return;
-    }
-
-    let start = transform.translation.truncate();
-
-    // Eagle Eye doubles the aim line length
-    let aim_length = if powerups.has(PowerUp::EagleEye) {
-        AIM_LINE_LENGTH * 2.0
-    } else {
-        AIM_LINE_LENGTH
-    };
-
-    // Bouncy Snord: Show bounce trajectory
-    if powerups.has(PowerUp::BouncySnord) {
-        draw_bouncy_aim_line(&mut gizmos, start, aim.0, aim_length);
-    } else {
-        draw_simple_aim_line(&mut gizmos, start, aim.0, aim_length);
-    }
-}
-
-/// Draw a simple dotted aim line (dark, behind shooter sprite).
-fn draw_simple_aim_line(gizmos: &mut Gizmos, start: Vec2, direction: Vec2, length: f32) {
-    let segments = 15;
-    let segment_length = length / segments as f32;
-
-    for i in 0..segments {
-        if i % 2 == 0 {
-            let seg_start = start + direction * (i as f32 * segment_length);
-            let seg_end = start + direction * ((i as f32 + 0.7) * segment_length);
-            gizmos.line_2d(seg_start, seg_end, Color::srgba(0.1, 0.1, 0.1, 0.6));
-        }
-    }
-}
-
-/// Draw aim line with bounce trajectory (Bouncy Snord power-up).
-fn draw_bouncy_aim_line(gizmos: &mut Gizmos, start: Vec2, direction: Vec2, total_length: f32) {
-    let radius = HEX_SIZE * 0.9; // Projectile collision radius
-    let mut current_pos = start;
-    let mut current_dir = direction;
-    let mut remaining_length = total_length;
-    let mut bounces = 0;
-    const MAX_BOUNCES: i32 = 3;
-
-    while remaining_length > 0.0 && bounces <= MAX_BOUNCES {
-        // Calculate how far until we hit a wall
-        let dist_to_left = if current_dir.x < 0.0 {
-            ((LEFT_WALL + radius) - current_pos.x) / current_dir.x
+        // Hide arrow when Bouncy Snord is active (trajectory segments replace it)
+        if powerups.has(PowerUp::BouncySnord) {
+            *arrow_visibility = Visibility::Hidden;
         } else {
-            f32::MAX
-        };
-        let dist_to_right = if current_dir.x > 0.0 {
-            ((RIGHT_WALL - radius) - current_pos.x) / current_dir.x
-        } else {
-            f32::MAX
-        };
+            *arrow_visibility = Visibility::Inherited;
 
-        let dist_to_wall = dist_to_left.min(dist_to_right);
-        let segment_length = remaining_length.min(dist_to_wall);
-
-        // Draw this segment as dotted line
-        let end_pos = current_pos + current_dir * segment_length;
-        let segment_count = (segment_length / 10.0).max(1.0) as i32;
-        let seg_len = segment_length / segment_count as f32;
-
-        for i in 0..segment_count {
-            if i % 2 == 0 {
-                let seg_start = current_pos + current_dir * (i as f32 * seg_len);
-                let seg_end = current_pos + current_dir * ((i as f32 + 0.7) * seg_len);
-                let alpha = if bounces == 0 { 0.6 } else { 0.4 };
-                gizmos.line_2d(seg_start, seg_end, Color::srgba(0.1, 0.1, 0.1, alpha));
-            }
-        }
-
-        remaining_length -= segment_length;
-        current_pos = end_pos;
-
-        // If we hit a wall, bounce
-        if remaining_length > 0.0 && dist_to_wall <= segment_length + 0.1 {
-            current_dir.x = -current_dir.x; // Reflect horizontally
-            bounces += 1;
+            // Eagle Eye extends the launcher arrow (doubles the length)
+            // Base size is 64x128, Eagle Eye makes it 64x256
+            let y_scale = if powerups.has(PowerUp::EagleEye) {
+                2.0
+            } else {
+                1.0
+            };
+            arrow_transform.scale = Vec3::new(1.0, y_scale, 1.0);
         }
     }
 }
@@ -575,7 +503,7 @@ fn reload_shooter(
         shooter_entity,
         loaded.0,
         Vec3::ZERO,
-        1.0,
+        1.5,
         LoadedBubbleVisual,
         Visibility::Inherited,
     );
@@ -590,8 +518,8 @@ fn reload_shooter(
         &game_assets,
         shooter_entity,
         next.0,
-        Vec3::new(HEX_SIZE * 3.0, 0.0, 0.0),
-        0.6,
+        Vec3::new(HEX_SIZE * 3.5, 0.0, 0.0),
+        1.0,
         NextBubbleVisual,
         Visibility::Inherited,
     );
@@ -606,8 +534,8 @@ fn reload_shooter(
         &game_assets,
         shooter_entity,
         second_next.0,
-        Vec3::new(HEX_SIZE * 4.5, 0.0, 0.0),
-        0.5,
+        Vec3::new(HEX_SIZE * 5.5, 0.0, 0.0),
+        0.8,
         SecondNextBubbleVisual,
         Visibility::Hidden,
     );
@@ -622,8 +550,8 @@ fn reload_shooter(
         &game_assets,
         shooter_entity,
         third_next.0,
-        Vec3::new(HEX_SIZE * 5.8, 0.0, 0.0),
-        0.4,
+        Vec3::new(HEX_SIZE * 7.3, 0.0, 0.0),
+        0.65,
         ThirdNextBubbleVisual,
         Visibility::Hidden,
     );
@@ -673,5 +601,119 @@ fn update_fortune_snord_visibility(
         } else {
             Visibility::Hidden
         };
+    }
+}
+
+/// Update trajectory segment sprites when Bouncy Snord powerup is active.
+fn draw_bounce_trajectory(
+    shooter_query: Query<(&Transform, &AimDirection, &ShooterState), With<Shooter>>,
+    mut segment_query: Query<(&TrajectorySegment, &mut Transform, &mut Visibility), Without<Shooter>>,
+    powerups: Res<UnlockedPowerUps>,
+) {
+    let has_bouncy = powerups.has(PowerUp::BouncySnord);
+
+    let Ok((shooter_transform, aim, state)) = shooter_query.single() else {
+        // Hide all segments if no shooter
+        for (_, _, mut vis) in &mut segment_query {
+            *vis = Visibility::Hidden;
+        }
+        return;
+    };
+
+    // Hide all segments if Bouncy Snord not active or reloading
+    if !has_bouncy || *state == ShooterState::Reloading {
+        for (_, _, mut vis) in &mut segment_query {
+            *vis = Visibility::Hidden;
+        }
+        return;
+    }
+
+    // Calculate trajectory segments
+    let mut segments: Vec<(Vec2, Vec2, f32)> = Vec::new(); // (start, end, length)
+    let mut pos = shooter_transform.translation.truncate();
+    let mut dir = aim.0;
+    let max_distance = 800.0;
+    let mut remaining_distance = max_distance;
+
+    // Simulate trajectory with bounces
+    while remaining_distance > 0.0 && segments.len() < MAX_TRAJECTORY_SEGMENTS {
+        // Calculate how far we can travel before hitting a wall or top
+        let mut t_min = remaining_distance;
+        let mut hit_wall = false;
+
+        // Check left wall
+        if dir.x < 0.0 {
+            let t = (LEFT_WALL - pos.x) / dir.x;
+            if t > 0.0 && t < t_min {
+                t_min = t;
+                hit_wall = true;
+            }
+        }
+
+        // Check right wall
+        if dir.x > 0.0 {
+            let t = (RIGHT_WALL - pos.x) / dir.x;
+            if t > 0.0 && t < t_min {
+                t_min = t;
+                hit_wall = true;
+            }
+        }
+
+        // Check top wall
+        if dir.y > 0.0 {
+            let t = (TOP_WALL - pos.y) / dir.y;
+            if t > 0.0 && t < t_min {
+                t_min = t;
+                hit_wall = false; // Stop at top, don't bounce
+            }
+        }
+
+        let end_pos = pos + dir * t_min;
+        segments.push((pos, end_pos, t_min));
+
+        // Update position and remaining distance
+        pos = end_pos;
+        remaining_distance -= t_min;
+
+        // If we hit top wall, stop
+        if pos.y >= TOP_WALL - 1.0 {
+            break;
+        }
+
+        // Bounce off side walls
+        if hit_wall {
+            dir.x = -dir.x;
+        } else {
+            break;
+        }
+    }
+
+    // Update trajectory segment sprites
+    // Guide line image is 300px wide (horizontal), anchored at CENTER_LEFT
+    const GUIDE_LINE_WIDTH: f32 = 300.0;
+
+    for (segment, mut transform, mut visibility) in &mut segment_query {
+        let idx = segment.0;
+
+        if idx < segments.len() {
+            let (start, end, length) = segments[idx];
+
+            // Position at segment start
+            transform.translation = start.extend(1.5);
+
+            // Calculate rotation angle from segment direction
+            let segment_dir = (end - start).normalize();
+            let angle = segment_dir.y.atan2(segment_dir.x);
+            transform.rotation = Quat::from_rotation_z(angle);
+
+            // Scale X to match segment length (image is 300px wide)
+            // Y scale reduced to make the guide line narrower/thinner
+            let scale_x = length / GUIDE_LINE_WIDTH;
+            transform.scale = Vec3::new(scale_x, 0.5, 1.0);
+
+            *visibility = Visibility::Inherited;
+        } else {
+            *visibility = Visibility::Hidden;
+        }
     }
 }

@@ -9,7 +9,7 @@ use super::{
     hex::{GridOffset, HEX_SIZE},
     projectile::BubbleInDangerZone,
 };
-use crate::{PausableSystems, screens::Screen};
+use crate::{PausableSystems, screens::Screen, theme::GameFont};
 
 pub(super) fn plugin(app: &mut App) {
     // Screen shake
@@ -206,6 +206,7 @@ fn spawn_combo_text(
     mut cluster_events: MessageReader<ClusterPopped>,
     grid_offset: Res<GridOffset>,
     _bubble_query: Query<&Transform, With<Bubble>>,
+    game_font: Res<GameFont>,
 ) {
     for event in cluster_events.read() {
         // Only show combo text for clusters > 3
@@ -244,6 +245,7 @@ fn spawn_combo_text(
             },
             Text2d::new(text),
             TextFont {
+                font: game_font.0.clone(),
                 font_size: 32.0,
                 ..default()
             },

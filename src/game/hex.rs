@@ -94,22 +94,22 @@ impl HexCoord {
         if is_odd_row {
             // Odd row (shifted right)
             [
-                HexCoord::new(self.q + 1, self.r),      // East
-                HexCoord::new(self.q + 1, self.r - 1),  // Northeast
-                HexCoord::new(self.q, self.r - 1),      // Northwest
-                HexCoord::new(self.q - 1, self.r),      // West
-                HexCoord::new(self.q, self.r + 1),      // Southwest
-                HexCoord::new(self.q + 1, self.r + 1),  // Southeast
+                HexCoord::new(self.q + 1, self.r),     // East
+                HexCoord::new(self.q + 1, self.r - 1), // Northeast
+                HexCoord::new(self.q, self.r - 1),     // Northwest
+                HexCoord::new(self.q - 1, self.r),     // West
+                HexCoord::new(self.q, self.r + 1),     // Southwest
+                HexCoord::new(self.q + 1, self.r + 1), // Southeast
             ]
         } else {
             // Even row (not shifted)
             [
-                HexCoord::new(self.q + 1, self.r),      // East
-                HexCoord::new(self.q, self.r - 1),      // Northeast
-                HexCoord::new(self.q - 1, self.r - 1),  // Northwest
-                HexCoord::new(self.q - 1, self.r),      // West
-                HexCoord::new(self.q - 1, self.r + 1),  // Southwest
-                HexCoord::new(self.q, self.r + 1),      // Southeast
+                HexCoord::new(self.q + 1, self.r),     // East
+                HexCoord::new(self.q, self.r - 1),     // Northeast
+                HexCoord::new(self.q - 1, self.r - 1), // Northwest
+                HexCoord::new(self.q - 1, self.r),     // West
+                HexCoord::new(self.q - 1, self.r + 1), // Southwest
+                HexCoord::new(self.q, self.r + 1),     // Southeast
             ]
         }
     }
@@ -190,10 +190,7 @@ impl HexCoord {
         for i in 0..6 {
             // For pointy-top, first corner is at 30 degrees
             let angle = std::f32::consts::PI / 180.0 * (60.0 * i as f32 + 30.0);
-            corners[i] = Vec2::new(
-                center.x + size * angle.cos(),
-                center.y + size * angle.sin(),
-            );
+            corners[i] = Vec2::new(center.x + size * angle.cos(), center.y + size * angle.sin());
         }
 
         corners

@@ -8,16 +8,16 @@
 use bevy::prelude::*;
 
 use super::{
-    bubble::{spawn_bubble, Bubble, BubbleColor, GameAssets},
+    bubble::{Bubble, BubbleColor, GameAssets, spawn_bubble},
     cluster::{ClusterPopped, FloatingBubblesRemoved},
     grid::HexGrid,
-    hex::{GridOffset, HexCoord, HEX_SIZE},
+    hex::{GridOffset, HEX_SIZE, HexCoord},
     highscore::{HighScores, ScoreEntry},
     powerups::{PowerUp, PowerUpChoices, UnlockedPowerUps},
     projectile::BubbleInDangerZone,
     shooter::SHOOTER_Y,
 };
-use crate::{screens::Screen, Pause, PausableSystems, menus::Menu};
+use crate::{PausableSystems, Pause, menus::Menu, screens::Screen};
 
 pub(super) fn plugin(app: &mut App) {
     app.init_resource::<GameScore>();
@@ -27,7 +27,10 @@ pub(super) fn plugin(app: &mut App) {
 
     app.add_message::<TriggerDescent>();
 
-    app.add_systems(OnEnter(Screen::Gameplay), (reset_score, reset_level, reset_powerups, spawn_score_ui));
+    app.add_systems(
+        OnEnter(Screen::Gameplay),
+        (reset_score, reset_level, reset_powerups, spawn_score_ui),
+    );
 
     app.add_systems(
         Update,
@@ -92,7 +95,8 @@ impl GameLevel {
 
     /// Returns shots remaining until next descent.
     pub fn shots_remaining(&self) -> u32 {
-        self.shots_until_descent.saturating_sub(self.shots_this_round)
+        self.shots_until_descent
+            .saturating_sub(self.shots_this_round)
     }
 }
 
@@ -185,7 +189,15 @@ fn handle_descent(
     for q in bounds.min_q..=bounds.max_q {
         let coord = HexCoord::new(q, new_row_r);
         let color = BubbleColor::random();
-        let entity = spawn_bubble(&mut commands, &mut meshes, &mut materials, coord, color, grid_offset.y, Some(&game_assets));
+        let entity = spawn_bubble(
+            &mut commands,
+            &mut meshes,
+            &mut materials,
+            coord,
+            color,
+            grid_offset.y,
+            Some(&game_assets),
+        );
         grid.insert(coord, entity);
     }
 

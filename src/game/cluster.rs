@@ -16,7 +16,7 @@ use super::{
     polish::PopAnimation,
     projectile::BubbleLanded,
 };
-use crate::{screens::Screen, PausableSystems};
+use crate::{PausableSystems, screens::Screen};
 
 /// Audio assets for game sound effects.
 #[derive(Resource, Asset, Clone, Reflect)]
@@ -84,10 +84,7 @@ pub(super) fn plugin(app: &mut App) {
 
     app.add_systems(
         Update,
-        (
-            detect_clusters,
-            detect_floating_bubbles,
-        )
+        (detect_clusters, detect_floating_bubbles)
             .chain()
             .in_set(PausableSystems)
             .in_set(ClusterSystems)
@@ -184,7 +181,9 @@ fn detect_clusters(
                         .unwrap_or(Vec3::ONE);
 
                     // Add pop animation instead of instant despawn
-                    commands.entity(entity).insert(PopAnimation::new(current_scale));
+                    commands
+                        .entity(entity)
+                        .insert(PopAnimation::new(current_scale));
                 }
             }
 
@@ -317,7 +316,9 @@ fn detect_floating_bubbles(
                     .unwrap_or(Vec3::ONE);
 
                 // Add pop animation instead of instant despawn
-                commands.entity(entity).insert(PopAnimation::new(current_scale));
+                commands
+                    .entity(entity)
+                    .insert(PopAnimation::new(current_scale));
             }
         }
 

@@ -8,7 +8,7 @@ use rand::Rng;
 
 use super::{
     grid::HexGrid,
-    hex::{GridOffset, HexCoord, HEX_SIZE},
+    hex::{GridOffset, HEX_SIZE, HexCoord},
 };
 use crate::screens::Screen;
 
@@ -32,7 +32,10 @@ pub(super) fn plugin(app: &mut App) {
     app.register_type::<BubbleColor>();
 
     // Load game assets before spawning bubbles
-    app.add_systems(OnEnter(Screen::Gameplay), load_game_assets.before(spawn_initial_bubbles));
+    app.add_systems(
+        OnEnter(Screen::Gameplay),
+        load_game_assets.before(spawn_initial_bubbles),
+    );
 
     // Spawn initial bubbles when entering gameplay
     app.add_systems(OnEnter(Screen::Gameplay), spawn_initial_bubbles);
@@ -157,7 +160,15 @@ fn spawn_initial_bubbles(
             let coord = HexCoord::new(q, r);
             let color = BubbleColor::random();
 
-            let entity = spawn_bubble(&mut commands, &mut meshes, &mut materials, coord, color, grid_offset.y, Some(&game_assets));
+            let entity = spawn_bubble(
+                &mut commands,
+                &mut meshes,
+                &mut materials,
+                coord,
+                color,
+                grid_offset.y,
+                Some(&game_assets),
+            );
             grid.insert(coord, entity);
             count += 1;
         }

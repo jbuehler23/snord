@@ -2,7 +2,10 @@
 
 use bevy::prelude::*;
 
-use crate::{asset_tracking::ResourceHandles, audio::sound_effect, menus::Menu, screens::Screen, theme::widget};
+use crate::{
+    asset_tracking::ResourceHandles, audio::sound_effect, menus::Menu, screens::Screen,
+    theme::widget,
+};
 
 pub(super) fn plugin(app: &mut App) {
     app.add_systems(OnEnter(Menu::Main), spawn_main_menu);
@@ -46,7 +49,12 @@ fn spawn_main_menu(mut commands: Commands, asset_server: Res<AssetServer>) {
                     ..default()
                 },
             ),
-            widget::button_image(play_button.clone(), 266.0, 105.0, enter_loading_or_gameplay_screen),
+            widget::button_image(
+                play_button.clone(),
+                266.0,
+                105.0,
+                enter_loading_or_gameplay_screen
+            ),
             widget::button_image(settings_button.clone(), 266.0, 105.0, open_settings_menu),
             widget::button_image(credits_button.clone(), 266.0, 105.0, open_credits_menu),
             widget::button_image(exit_button.clone(), 266.0, 105.0, exit_app),

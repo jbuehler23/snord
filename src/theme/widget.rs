@@ -7,7 +7,10 @@ use bevy::{
     prelude::*,
 };
 
-use crate::theme::{interaction::{InteractionPalette, ImageInteractionPalette}, palette::*};
+use crate::theme::{
+    interaction::{ImageInteractionPalette, InteractionPalette},
+    palette::*,
+};
 
 /// A root UI node that fills the window and centers its content.
 pub fn ui_root(name: impl Into<Cow<'static, str>>) -> impl Bundle {
@@ -134,7 +137,12 @@ where
 }
 
 /// A button with an image background and an action defined as an [`Observer`].
-pub fn button_image<E, B, M, I>(image: Handle<Image>, width: f32, height: f32, action: I) -> impl Bundle
+pub fn button_image<E, B, M, I>(
+    image: Handle<Image>,
+    width: f32,
+    height: f32,
+    action: I,
+) -> impl Bundle
 where
     E: EntityEvent,
     B: Bundle,
@@ -144,7 +152,13 @@ where
 }
 
 /// A button with an image background, custom vertical margin, and an action defined as an [`Observer`].
-pub fn button_image_with_margin<E, B, M, I>(image: Handle<Image>, width: f32, height: f32, vertical_margin: f32, action: I) -> impl Bundle
+pub fn button_image_with_margin<E, B, M, I>(
+    image: Handle<Image>,
+    width: f32,
+    height: f32,
+    vertical_margin: f32,
+    action: I,
+) -> impl Bundle
 where
     E: EntityEvent,
     B: Bundle,

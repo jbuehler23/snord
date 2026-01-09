@@ -6,14 +6,14 @@
 use bevy::prelude::*;
 
 use super::{
-    bubble::{spawn_bubble, BubbleColor, GameAssets, SNORD_SPRITE_SCALE},
+    bubble::{BubbleColor, GameAssets, SNORD_SPRITE_SCALE, spawn_bubble},
     grid::HexGrid,
-    hex::{GridOffset, HexCoord, HEX_SIZE},
+    hex::{GridOffset, HEX_SIZE, HexCoord},
     powerups::{PowerUp, UnlockedPowerUps},
     shooter::SHOOTER_Y,
 };
 
-use crate::{audio::sound_effect, screens::Screen, PausableSystems};
+use crate::{PausableSystems, audio::sound_effect, screens::Screen};
 
 pub(super) fn plugin(app: &mut App) {
     app.register_type::<Projectile>();
@@ -146,15 +146,15 @@ fn spawn_projectile(
             ));
         }
 
-        info!("Spawned projectile at {:?} with velocity {:?}", event.position, velocity);
+        info!(
+            "Spawned projectile at {:?} with velocity {:?}",
+            event.position, velocity
+        );
     }
 }
 
 /// Move the projectile based on its velocity.
-fn move_projectile(
-    time: Res<Time>,
-    mut query: Query<(&mut Transform, &Projectile)>,
-) {
+fn move_projectile(time: Res<Time>, mut query: Query<(&mut Transform, &Projectile)>) {
     for (mut transform, projectile) in &mut query {
         transform.translation += projectile.velocity.extend(0.0) * time.delta_secs();
     }
@@ -195,7 +195,10 @@ fn check_wall_collision(
                 // Check if landing position is in danger zone
                 let landing_y = coord.to_pixel_with_offset(HEX_SIZE, grid_offset.y).y;
                 if landing_y < DANGER_LINE_Y {
-                    info!("Bubble would land in danger zone at y={}, triggering game over", landing_y);
+                    info!(
+                        "Bubble would land in danger zone at y={}, triggering game over",
+                        landing_y
+                    );
                     danger_events.write(BubbleInDangerZone);
                     commands.entity(entity).despawn();
                 } else {
@@ -282,7 +285,10 @@ fn check_bubble_collision(
         // Check if projectile position at collision time is in danger zone
         // This must happen BEFORE pathfinding, since pathfinding can find cells above
         if proj_pos.y < DANGER_LINE_Y {
-            info!("Projectile collided in danger zone at y={}, triggering game over", proj_pos.y);
+            info!(
+                "Projectile collided in danger zone at y={}, triggering game over",
+                proj_pos.y
+            );
             danger_events.write(BubbleInDangerZone);
             commands.entity(proj_entity).despawn();
             return;
@@ -328,7 +334,15 @@ fn land_projectile(
     commands.entity(projectile_entity).despawn();
 
     // Spawn a new bubble at the grid position
-    let new_entity = spawn_bubble(commands, meshes, materials, coord, color, grid_origin_y, Some(game_assets));
+    let new_entity = spawn_bubble(
+        commands,
+        meshes,
+        materials,
+        coord,
+        color,
+        grid_origin_y,
+        Some(game_assets),
+    );
     grid.insert(coord, new_entity);
 
     info!("Bubble landed at {} with color {:?}", coord, color);

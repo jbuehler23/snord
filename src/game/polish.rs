@@ -9,7 +9,7 @@ use super::{
     hex::{GridOffset, HEX_SIZE},
     projectile::BubbleInDangerZone,
 };
-use crate::{screens::Screen, PausableSystems};
+use crate::{PausableSystems, screens::Screen};
 
 pub(super) fn plugin(app: &mut App) {
     // Screen shake
@@ -43,7 +43,6 @@ pub(super) fn plugin(app: &mut App) {
 // SCREEN SHAKE
 // =============================================================================
 
-
 /// Resource tracking screen shake state.
 #[derive(Resource, Default)]
 pub struct ScreenShake {
@@ -57,7 +56,6 @@ pub struct ScreenShake {
 const MAX_SHAKE_OFFSET: f32 = 10.0;
 /// How fast trauma decays per second.
 const TRAUMA_DECAY: f32 = 2.5;
-
 
 /// Trigger screen shake from game events.
 fn trigger_shake_on_events(
@@ -75,7 +73,10 @@ fn trigger_shake_on_events(
             _ => 0.85,
         };
         shake.trauma = (shake.trauma + intensity).min(1.0);
-        info!("Screen shake from cluster: {} bubbles, trauma={}", event.count, shake.trauma);
+        info!(
+            "Screen shake from cluster: {} bubbles, trauma={}",
+            event.count, shake.trauma
+        );
     }
 
     // Danger zone - strong shake
@@ -214,7 +215,8 @@ fn spawn_combo_text(
 
         // Calculate center position of the cluster
         let center_pos = if !event.coords.is_empty() {
-            let sum: Vec2 = event.coords
+            let sum: Vec2 = event
+                .coords
                 .iter()
                 .map(|coord| coord.to_pixel_with_offset(HEX_SIZE, grid_offset.y))
                 .fold(Vec2::ZERO, |acc, pos| acc + pos);
@@ -246,8 +248,7 @@ fn spawn_combo_text(
                 ..default()
             },
             TextColor(Color::srgb(1.0, 1.0, 0.2)),
-            Transform::from_translation(center_pos.extend(10.0))
-                .with_scale(Vec3::splat(0.5)),
+            Transform::from_translation(center_pos.extend(10.0)).with_scale(Vec3::splat(0.5)),
             DespawnOnExit(Screen::Gameplay),
         ));
     }

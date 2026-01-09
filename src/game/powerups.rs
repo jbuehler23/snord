@@ -91,11 +91,7 @@ impl PowerUp {
 
     /// Get the tier for a given level.
     pub fn tier_for_level(level: u32) -> u32 {
-        if level < 15 {
-            1
-        } else {
-            2
-        }
+        if level < 15 { 1 } else { 2 }
     }
 
     /// Get 3 random power-ups for selection, excluding already unlocked ones.

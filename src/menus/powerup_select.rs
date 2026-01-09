@@ -16,7 +16,11 @@ pub(super) fn plugin(app: &mut App) {
 #[derive(Component)]
 struct PowerUpButton(PowerUp);
 
-fn spawn_powerup_menu(mut commands: Commands, choices: Res<PowerUpChoices>, asset_server: Res<AssetServer>) {
+fn spawn_powerup_menu(
+    mut commands: Commands,
+    choices: Res<PowerUpChoices>,
+    asset_server: Res<AssetServer>,
+) {
     let level = choices.level;
     let power_choices = choices.choices.clone();
     let button_template = asset_server.load("images/button_template.png");
@@ -56,45 +60,50 @@ fn spawn_powerup_menu(mut commands: Commands, choices: Res<PowerUpChoices>, asse
 }
 
 fn spawn_powerup_button(parent: &mut ChildSpawner, power: PowerUp, button_image: Handle<Image>) {
-    parent.spawn((
-        Name::new(format!("PowerUp Button: {}", power.name())),
-        Node::default(),
-    )).with_children(|button_parent| {
-        button_parent.spawn((
-            Name::new("Button Inner"),
-            Button,
-            PowerUpButton(power),
-            ImageNode::new(button_image),
-            ImageInteractionPalette {
-                none: Color::WHITE,
-                hovered: Color::srgb(0.85, 0.85, 0.85),
-                pressed: Color::srgb(0.7, 0.7, 0.7),
-            },
-            Node {
-                width: Val::Px(380.0),
-                height: Val::Px(150.0),
-                align_items: AlignItems::Center,
-                justify_content: JustifyContent::Center,
-                flex_direction: FlexDirection::Column,
-                ..default()
-            },
-        )).with_children(|inner| {
-            // Power-up name
-            inner.spawn((
-                Text(power.name().to_string()),
-                TextFont::from_font_size(24.0),
-                TextColor(BUTTON_TEXT),
-                Pickable::IGNORE,
-            ));
-            // Power-up description
-            inner.spawn((
-                Text(power.description().to_string()),
-                TextFont::from_font_size(14.0),
-                TextColor(Color::srgb(0.3, 0.3, 0.3)),
-                Pickable::IGNORE,
-            ));
-        }).observe(select_powerup);
-    });
+    parent
+        .spawn((
+            Name::new(format!("PowerUp Button: {}", power.name())),
+            Node::default(),
+        ))
+        .with_children(|button_parent| {
+            button_parent
+                .spawn((
+                    Name::new("Button Inner"),
+                    Button,
+                    PowerUpButton(power),
+                    ImageNode::new(button_image),
+                    ImageInteractionPalette {
+                        none: Color::WHITE,
+                        hovered: Color::srgb(0.85, 0.85, 0.85),
+                        pressed: Color::srgb(0.7, 0.7, 0.7),
+                    },
+                    Node {
+                        width: Val::Px(380.0),
+                        height: Val::Px(150.0),
+                        align_items: AlignItems::Center,
+                        justify_content: JustifyContent::Center,
+                        flex_direction: FlexDirection::Column,
+                        ..default()
+                    },
+                ))
+                .with_children(|inner| {
+                    // Power-up name
+                    inner.spawn((
+                        Text(power.name().to_string()),
+                        TextFont::from_font_size(24.0),
+                        TextColor(BUTTON_TEXT),
+                        Pickable::IGNORE,
+                    ));
+                    // Power-up description
+                    inner.spawn((
+                        Text(power.description().to_string()),
+                        TextFont::from_font_size(14.0),
+                        TextColor(Color::srgb(0.3, 0.3, 0.3)),
+                        Pickable::IGNORE,
+                    ));
+                })
+                .observe(select_powerup);
+        });
 }
 
 fn select_powerup(

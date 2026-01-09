@@ -34,7 +34,11 @@ pub fn sound_effect(handle: Handle<AudioSource>) -> impl Bundle {
 }
 
 /// A sound effect with custom pitch and volume.
-pub fn sound_effect_with_settings(handle: Handle<AudioSource>, pitch: f32, volume: f32) -> impl Bundle {
+pub fn sound_effect_with_settings(
+    handle: Handle<AudioSource>,
+    pitch: f32,
+    volume: f32,
+) -> impl Bundle {
     (
         AudioPlayer(handle),
         PlaybackSettings::DESPAWN

@@ -10,8 +10,8 @@ use bevy::{color::palettes::css, input::common_conditions::input_just_pressed, p
 
 use super::{
     grid::HexGrid,
-    hex::{HexCoord, HEX_SIZE},
-    projectile::{LEFT_WALL, RIGHT_WALL, TOP_WALL, DANGER_LINE_Y},
+    hex::{HEX_SIZE, HexCoord},
+    projectile::{DANGER_LINE_Y, LEFT_WALL, RIGHT_WALL, TOP_WALL},
     shooter::SHOOTER_Y,
 };
 use crate::screens::Screen;
@@ -22,8 +22,7 @@ pub(super) fn plugin(app: &mut App) {
     // Toggle debug with 'D' key
     app.add_systems(
         Update,
-        toggle_debug
-            .run_if(in_state(Screen::Gameplay).and(input_just_pressed(KeyCode::KeyD))),
+        toggle_debug.run_if(in_state(Screen::Gameplay).and(input_just_pressed(KeyCode::KeyD))),
     );
 
     // Draw debug grid when visible
@@ -33,10 +32,7 @@ pub(super) fn plugin(app: &mut App) {
     );
 
     // Always draw walls during gameplay
-    app.add_systems(
-        Update,
-        draw_walls.run_if(in_state(Screen::Gameplay)),
-    );
+    app.add_systems(Update, draw_walls.run_if(in_state(Screen::Gameplay)));
 }
 
 /// Resource to track if debug visualization is visible.
@@ -97,11 +93,7 @@ fn draw_hex_outline(gizmos: &mut Gizmos, coord: HexCoord, size: f32, color: impl
 }
 
 /// Draw the outer bounds of the grid.
-fn draw_bounds_outline(
-    gizmos: &mut Gizmos,
-    bounds: &super::grid::GridBounds,
-    size: f32,
-) {
+fn draw_bounds_outline(gizmos: &mut Gizmos, bounds: &super::grid::GridBounds, size: f32) {
     let color = css::AQUA.with_alpha(0.8);
 
     // Top edge

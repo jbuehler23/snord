@@ -7,14 +7,14 @@
 use bevy::{prelude::*, window::PrimaryWindow};
 
 use super::{
-    bubble::{load_game_assets, Bubble, BubbleColor, GameAssets, SNORD_SPRITE_SCALE},
+    bubble::{Bubble, BubbleColor, GameAssets, SNORD_SPRITE_SCALE, load_game_assets},
     grid::HexGrid,
     hex::HEX_SIZE,
     powerups::{PowerUp, UnlockedPowerUps},
-    projectile::{FireProjectile, Projectile, LEFT_WALL, RIGHT_WALL},
+    projectile::{FireProjectile, LEFT_WALL, Projectile, RIGHT_WALL},
     state::{GameLevel, TriggerDescent},
 };
-use crate::{screens::Screen, PausableSystems};
+use crate::{PausableSystems, screens::Screen};
 
 pub(super) fn plugin(app: &mut App) {
     app.register_type::<Shooter>();
@@ -23,7 +23,10 @@ pub(super) fn plugin(app: &mut App) {
     app.register_type::<NextBubble>();
 
     // Spawn shooter when entering gameplay (after assets are loaded)
-    app.add_systems(OnEnter(Screen::Gameplay), spawn_shooter.after(load_game_assets));
+    app.add_systems(
+        OnEnter(Screen::Gameplay),
+        spawn_shooter.after(load_game_assets),
+    );
 
     // Update systems that run while playing
     app.add_systems(
@@ -150,18 +153,20 @@ fn spawn_shooter(
 
     // Spawn the shooter arrow visual (follows aim direction)
     // Anchor at bottom so rotation pivot matches guide line origin
-    let arrow = commands.spawn((
-        Name::new("Shooter Arrow"),
-        ShooterArrowVisual,
-        Transform::from_translation(Vec3::new(0.0, 0.0, 2.0)),
-        Sprite {
-            image: game_assets.shooter_image.clone(),
-            // Stretch to make it longer (64x64 -> 64x128)
-            custom_size: Some(Vec2::new(64.0, 128.0)),
-            ..default()
-        },
-        bevy::sprite::Anchor::BOTTOM_CENTER,
-    )).id();
+    let arrow = commands
+        .spawn((
+            Name::new("Shooter Arrow"),
+            ShooterArrowVisual,
+            Transform::from_translation(Vec3::new(0.0, 0.0, 2.0)),
+            Sprite {
+                image: game_assets.shooter_image.clone(),
+                // Stretch to make it longer (64x64 -> 64x128)
+                custom_size: Some(Vec2::new(64.0, 128.0)),
+                ..default()
+            },
+            bevy::sprite::Anchor::BOTTOM_CENTER,
+        ))
+        .id();
     commands.entity(shooter_entity).add_child(arrow);
 
     // Spawn preview bubble visuals as children
@@ -179,15 +184,17 @@ fn spawn_shooter(
     );
 
     // Base/platform visual
-    let base = commands.spawn((
-        Name::new("Shooter Base"),
-        Sprite {
-            color: Color::srgb(0.3, 0.3, 0.35),
-            custom_size: Some(Vec2::new(HEX_SIZE * 3.0, HEX_SIZE * 0.5)),
-            ..default()
-        },
-        Transform::from_xyz(0.0, -HEX_SIZE * 1.2, -0.1),
-    )).id();
+    let base = commands
+        .spawn((
+            Name::new("Shooter Base"),
+            Sprite {
+                color: Color::srgb(0.3, 0.3, 0.35),
+                custom_size: Some(Vec2::new(HEX_SIZE * 3.0, HEX_SIZE * 0.5)),
+                ..default()
+            },
+            Transform::from_xyz(0.0, -HEX_SIZE * 1.2, -0.1),
+        ))
+        .id();
     commands.entity(shooter_entity).add_child(base);
 
     spawn_bubble_visual(
@@ -229,7 +236,10 @@ fn spawn_shooter(
         Visibility::Hidden,
     );
 
-    info!("Shooter spawned with {:?} loaded, {:?} next", loaded_color, next_color);
+    info!(
+        "Shooter spawned with {:?} loaded, {:?} next",
+        loaded_color, next_color
+    );
 }
 
 /// Spawn a bubble visual (sprite for blue, mesh for others) as a child of the given parent.
@@ -256,25 +266,29 @@ fn spawn_bubble_visual<M: Component>(
     };
 
     if let Some(image) = sprite_image {
-        let child = commands.spawn((
-            Name::new("Bubble Visual (Sprite)"),
-            marker,
-            Transform::from_translation(position)
-                .with_scale(Vec3::splat(SNORD_SPRITE_SCALE * scale)),
-            Sprite::from_image(image),
-            visibility,
-        )).id();
+        let child = commands
+            .spawn((
+                Name::new("Bubble Visual (Sprite)"),
+                marker,
+                Transform::from_translation(position)
+                    .with_scale(Vec3::splat(SNORD_SPRITE_SCALE * scale)),
+                Sprite::from_image(image),
+                visibility,
+            ))
+            .id();
         commands.entity(parent).add_child(child);
     } else {
         // Use colored hexagon mesh for other colors
-        let child = commands.spawn((
-            Name::new("Bubble Visual (Mesh)"),
-            marker,
-            Transform::from_translation(position),
-            Mesh2d(meshes.add(RegularPolygon::new(HEX_SIZE * scale, 6))),
-            MeshMaterial2d(materials.add(ColorMaterial::from_color(color.to_color()))),
-            visibility,
-        )).id();
+        let child = commands
+            .spawn((
+                Name::new("Bubble Visual (Mesh)"),
+                marker,
+                Transform::from_translation(position),
+                Mesh2d(meshes.add(RegularPolygon::new(HEX_SIZE * scale, 6))),
+                MeshMaterial2d(materials.add(ColorMaterial::from_color(color.to_color()))),
+                visibility,
+            ))
+            .id();
         commands.entity(parent).add_child(child);
     }
 }
@@ -439,12 +453,7 @@ fn handle_fire_input(
     mouse_input: Res<ButtonInput<MouseButton>>,
     keyboard_input: Res<ButtonInput<KeyCode>>,
     mut shooter_query: Query<
-        (
-            &Transform,
-            &AimDirection,
-            &mut ShooterState,
-            &LoadedBubble,
-        ),
+        (&Transform, &AimDirection, &mut ShooterState, &LoadedBubble),
         With<Shooter>,
     >,
     projectile_query: Query<&Projectile>,
@@ -452,8 +461,8 @@ fn handle_fire_input(
     mut level: ResMut<GameLevel>,
 ) {
     // Check for fire input
-    let fire_pressed = mouse_input.just_pressed(MouseButton::Left)
-        || keyboard_input.just_pressed(KeyCode::Space);
+    let fire_pressed =
+        mouse_input.just_pressed(MouseButton::Left) || keyboard_input.just_pressed(KeyCode::Space);
 
     if !fire_pressed {
         return;
@@ -642,7 +651,10 @@ fn reload_shooter(
 /// Update visibility of extra preview bubbles based on Fortune Snord power-up.
 fn update_fortune_snord_visibility(
     mut second_query: Query<&mut Visibility, With<SecondNextBubbleVisual>>,
-    mut third_query: Query<&mut Visibility, (With<ThirdNextBubbleVisual>, Without<SecondNextBubbleVisual>)>,
+    mut third_query: Query<
+        &mut Visibility,
+        (With<ThirdNextBubbleVisual>, Without<SecondNextBubbleVisual>),
+    >,
     powerups: Res<UnlockedPowerUps>,
 ) {
     let has_fortune = powerups.has(PowerUp::FortuneSnord);

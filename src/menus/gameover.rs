@@ -2,7 +2,11 @@
 
 use bevy::prelude::*;
 
-use crate::{menus::Menu, screens::Screen, theme::{palette::HEADER_TEXT, widget}};
+use crate::{
+    menus::Menu,
+    screens::Screen,
+    theme::{palette::HEADER_TEXT, widget},
+};
 
 pub(super) fn plugin(app: &mut App) {
     app.add_systems(OnEnter(Menu::GameOver), spawn_gameover_menu);

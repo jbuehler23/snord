@@ -7,7 +7,7 @@
 use bevy::prelude::*;
 use std::collections::HashMap;
 
-use super::hex::{HexCoord, HEX_SIZE};
+use super::hex::{HEX_SIZE, HexCoord};
 
 pub(super) fn plugin(app: &mut App) {
     app.init_resource::<HexGrid>();
@@ -183,7 +183,9 @@ impl HexGrid {
 
         // If the target cell is valid and empty, use it
         // Allow cells within bounds OR adjacent to existing bubbles (for descended rows)
-        if (self.bounds.contains(target) || self.is_adjacent_to_bubble(target)) && !self.is_occupied(target) {
+        if (self.bounds.contains(target) || self.is_adjacent_to_bubble(target))
+            && !self.is_occupied(target)
+        {
             return Some(target);
         }
 
@@ -201,7 +203,9 @@ impl HexGrid {
                 checked.insert(coord);
 
                 // Allow cells within bounds OR adjacent to existing bubbles (for descended rows)
-                if (self.bounds.contains(coord) || self.is_adjacent_to_bubble(coord)) && !self.is_occupied(coord) {
+                if (self.bounds.contains(coord) || self.is_adjacent_to_bubble(coord))
+                    && !self.is_occupied(coord)
+                {
                     return Some(coord);
                 }
 

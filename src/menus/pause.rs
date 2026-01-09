@@ -2,11 +2,7 @@
 
 use bevy::{ecs::spawn::SpawnWith, input::common_conditions::input_just_pressed, prelude::*};
 
-use crate::{
-    menus::Menu,
-    screens::Screen,
-    theme::{GameFont, palette::HEADER_TEXT, widget},
-};
+use crate::{menus::Menu, screens::Screen, theme::widget};
 
 pub(super) fn plugin(app: &mut App) {
     app.add_systems(OnEnter(Menu::Pause), spawn_pause_menu);
@@ -16,15 +12,11 @@ pub(super) fn plugin(app: &mut App) {
     );
 }
 
-fn spawn_pause_menu(
-    mut commands: Commands,
-    asset_server: Res<AssetServer>,
-    game_font: Res<GameFont>,
-) {
+fn spawn_pause_menu(mut commands: Commands, asset_server: Res<AssetServer>) {
+    let paused_header = asset_server.load("images/paused.png");
     let play_button = asset_server.load("images/play_button.png");
     let settings_button = asset_server.load("images/settings_button.png");
     let exit_button = asset_server.load("images/exit_button.png");
-    let font = game_font.0.clone();
 
     commands.spawn((
         Name::new("Pause Menu"),
@@ -43,16 +35,13 @@ fn spawn_pause_menu(
         GlobalZIndex(2),
         DespawnOnExit(Menu::Pause),
         Children::spawn(SpawnWith(move |parent: &mut ChildSpawner| {
+            // Paused header image
             parent.spawn((
-                Name::new("Pause Header"),
-                Text("Game Paused".to_string()),
-                TextFont {
-                    font: font.clone(),
-                    font_size: 48.0,
-                    ..default()
-                },
-                TextColor(HEADER_TEXT),
+                Name::new("Paused Header"),
+                ImageNode::new(paused_header),
                 Node {
+                    width: Val::Px(400.0),
+                    height: Val::Px(160.0),
                     margin: UiRect::bottom(Val::Px(20.0)),
                     ..default()
                 },

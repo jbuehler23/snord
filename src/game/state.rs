@@ -140,8 +140,6 @@ fn reset_level(mut level: ResMut<GameLevel>) {
 /// Reset power-ups when starting a new game.
 fn reset_powerups(mut powerups: ResMut<UnlockedPowerUps>) {
     powerups.reset();
-    // TESTING: Start with Bouncy Snord unlocked
-    powerups.add(PowerUp::BouncySnord);
 }
 
 /// Handle bubble descent when triggered.

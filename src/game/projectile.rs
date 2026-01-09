@@ -57,6 +57,7 @@ pub struct FireProjectile {
 pub struct BubbleLanded {
     pub coord: HexCoord,
     pub color: BubbleColor,
+    #[allow(dead_code)]
     pub entity: Entity,
 }
 

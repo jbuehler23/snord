@@ -59,6 +59,7 @@ impl GridBounds {
     }
 
     /// Iterate over all valid hex coordinates in the grid.
+    #[allow(dead_code)]
     pub fn iter(&self) -> impl Iterator<Item = HexCoord> {
         let min_q = self.min_q;
         let max_q = self.max_q;
@@ -72,11 +73,13 @@ impl GridBounds {
     }
 
     /// Get the number of columns for a given row.
+    #[allow(dead_code)]
     pub fn columns_in_row(&self, _r: i32) -> i32 {
         self.max_q - self.min_q + 1
     }
 
     /// Get the center position in world coordinates.
+    #[allow(dead_code)]
     pub fn center_world(&self) -> Vec2 {
         let center_r = (self.min_r + self.max_r) / 2;
         let center_q = (self.min_q + self.max_q) / 2;
@@ -98,6 +101,7 @@ pub struct HexGrid {
 
 impl HexGrid {
     /// Create a new empty grid with default bounds.
+    #[allow(dead_code)]
     pub fn new() -> Self {
         Self::default()
     }
@@ -137,6 +141,7 @@ impl HexGrid {
     }
 
     /// Get the number of bubbles in the grid.
+    #[allow(dead_code)]
     pub fn len(&self) -> usize {
         self.bubbles.len()
     }
@@ -159,6 +164,7 @@ impl HexGrid {
     /// Find empty neighbors of occupied cells.
     ///
     /// Useful for finding where a projectile can snap to.
+    #[allow(dead_code)]
     pub fn empty_neighbors(&self, coord: HexCoord) -> Vec<HexCoord> {
         coord
             .neighbors()
@@ -220,6 +226,7 @@ impl HexGrid {
 
     /// Get the lowest row (highest r value) that has bubbles.
     /// Used for checking game over condition.
+    #[allow(dead_code)]
     pub fn lowest_row(&self) -> Option<i32> {
         self.bubbles.keys().map(|c| c.r).max()
     }

@@ -29,6 +29,7 @@ pub enum PowerUp {
 
 impl PowerUp {
     /// Get the tier of this power-up (1 or 2).
+    #[allow(dead_code)]
     pub fn tier(&self) -> u32 {
         match self {
             PowerUp::SpeedySnord

@@ -147,6 +147,7 @@ pub struct ClusterPopped {
 /// Message sent when floating bubbles are removed.
 #[derive(Message, Debug, Clone)]
 pub struct FloatingBubblesRemoved {
+    #[allow(dead_code)]
     pub coords: Vec<HexCoord>,
     pub count: usize,
 }

@@ -113,6 +113,7 @@ impl BubbleColor {
     }
 
     /// Get all possible bubble colors.
+    #[allow(dead_code)]
     pub const ALL: [BubbleColor; 6] = [
         BubbleColor::Red,
         BubbleColor::Blue,

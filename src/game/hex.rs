@@ -72,10 +72,12 @@ impl HexCoord {
     }
 
     /// The origin hex at (0, 0).
+    #[allow(dead_code)]
     pub const ORIGIN: Self = Self { q: 0, r: 0 };
 
     /// Get the derived s coordinate (cube coordinates constraint: q + r + s = 0).
     #[inline]
+    #[allow(dead_code)]
     pub const fn s(&self) -> i32 {
         -self.q - self.r
     }
@@ -116,6 +118,7 @@ impl HexCoord {
     ///
     /// In cube coordinates, this is: max(|dq|, |dr|, |ds|)
     /// Or equivalently: (|dq| + |dr| + |ds|) / 2
+    #[allow(dead_code)]
     pub fn distance(&self, other: HexCoord) -> i32 {
         let dq = (self.q - other.q).abs();
         let dr = (self.r - other.r).abs();
@@ -152,6 +155,7 @@ impl HexCoord {
     /// For offset coordinates, we find the row first, then determine column
     /// based on row parity (odd rows are shifted right).
     /// Uses the default GRID_ORIGIN_Y constant.
+    #[allow(dead_code)]
     pub fn from_pixel(pos: Vec2, size: f32) -> Self {
         Self::from_pixel_with_offset(pos, size, GRID_ORIGIN_Y)
     }

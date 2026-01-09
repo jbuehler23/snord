@@ -41,6 +41,7 @@ pub struct HighScores {
 
 impl HighScores {
     /// Check if a score would make it into the top 10.
+    #[allow(dead_code)]
     pub fn is_high_score(&self, score: u32) -> bool {
         if score == 0 {
             return false;

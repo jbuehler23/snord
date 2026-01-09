@@ -42,11 +42,21 @@ pub(super) fn plugin(app: &mut App) {
 
 /// System to spawn the game level when entering gameplay.
 /// Called from `screens/gameplay.rs` on `OnEnter(Screen::Gameplay)`.
-pub fn spawn_game(mut commands: Commands) {
+pub fn spawn_game(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn((
         Name::new("Game"),
         Transform::default(),
         Visibility::default(),
+        DespawnOnExit(Screen::Gameplay),
+    ));
+
+    // Spawn game panel background (centered on playfield)
+    // Playfield: TOP_WALL=280, SHOOTER_Y=-250, so center Y = (280 + (-250)) / 2 = 15
+    let panel_image = asset_server.load("images/game_bounds.png");
+    commands.spawn((
+        Name::new("Game Panel"),
+        Sprite::from_image(panel_image),
+        Transform::from_xyz(0.0, 15.0, -1.0), // Z=-1 to be behind bubbles
         DespawnOnExit(Screen::Gameplay),
     ));
 

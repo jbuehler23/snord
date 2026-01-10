@@ -47,8 +47,18 @@ fn spawn_pause_menu(mut commands: Commands, asset_server: Res<AssetServer>) {
                 },
             ));
             parent.spawn(widget::button_image(play_button, 266.0, 105.0, close_menu));
-            parent.spawn(widget::button_image(settings_button, 266.0, 105.0, open_settings_menu));
-            parent.spawn(widget::button_image(exit_button, 266.0, 105.0, quit_to_title));
+            parent.spawn(widget::button_image(
+                settings_button,
+                266.0,
+                105.0,
+                open_settings_menu,
+            ));
+            parent.spawn(widget::button_image(
+                exit_button,
+                266.0,
+                105.0,
+                quit_to_title,
+            ));
         })),
     ));
 }

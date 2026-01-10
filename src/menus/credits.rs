@@ -128,7 +128,12 @@ fn spawn_credits_menu(
             ));
 
             // Back button
-            parent.spawn(widget::button_image(back_button, 266.0, 105.0, go_back_on_click));
+            parent.spawn(widget::button_image(
+                back_button,
+                266.0,
+                105.0,
+                go_back_on_click,
+            ));
         })),
     ));
 }

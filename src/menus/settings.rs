@@ -2,7 +2,9 @@
 //!
 //! Additional settings and accessibility options should go here.
 
-use bevy::{audio::Volume, ecs::spawn::SpawnWith, input::common_conditions::input_just_pressed, prelude::*};
+use bevy::{
+    audio::Volume, ecs::spawn::SpawnWith, input::common_conditions::input_just_pressed, prelude::*,
+};
 
 use crate::{
     menus::Menu,
@@ -64,83 +66,92 @@ fn spawn_settings_menu(
             ));
 
             // Volume control row
-            parent.spawn((
-                Name::new("Volume Row"),
-                Node {
-                    flex_direction: FlexDirection::Row,
-                    align_items: AlignItems::Center,
-                    column_gap: Val::Px(15.0),
-                    margin: UiRect::bottom(Val::Px(20.0)),
-                    ..default()
-                },
-            )).with_children(|row| {
-                // Volume label
-                row.spawn((
-                    Name::new("Volume Label"),
-                    Text::new("Volume"),
-                    TextFont {
-                        font: font.clone(),
-                        font_size: 24.0,
-                        ..default()
-                    },
-                    TextColor(LABEL_TEXT),
-                ));
-
-                // Minus button
-                row.spawn((
-                    Name::new("Minus Button"),
-                    Button,
-                    ImageNode::new(minus_button),
-                    ImageInteractionPalette {
-                        none: Color::WHITE,
-                        hovered: Color::srgb(0.85, 0.85, 0.85),
-                        pressed: Color::srgb(0.7, 0.7, 0.7),
-                    },
+            parent
+                .spawn((
+                    Name::new("Volume Row"),
                     Node {
-                        width: Val::Px(30.0),
-                        height: Val::Px(35.0),
+                        flex_direction: FlexDirection::Row,
+                        align_items: AlignItems::Center,
+                        column_gap: Val::Px(15.0),
+                        margin: UiRect::bottom(Val::Px(20.0)),
                         ..default()
                     },
-                )).observe(lower_global_volume);
+                ))
+                .with_children(|row| {
+                    // Volume label
+                    row.spawn((
+                        Name::new("Volume Label"),
+                        Text::new("Volume"),
+                        TextFont {
+                            font: font.clone(),
+                            font_size: 24.0,
+                            ..default()
+                        },
+                        TextColor(LABEL_TEXT),
+                    ));
 
-                // Volume value
-                row.spawn((
-                    Name::new("Volume Value"),
-                    Text::new("100%"),
-                    TextFont {
-                        font: font.clone(),
-                        font_size: 24.0,
-                        ..default()
-                    },
-                    TextColor(LABEL_TEXT),
-                    GlobalVolumeLabel,
-                    Node {
-                        width: Val::Px(60.0),
-                        justify_content: JustifyContent::Center,
-                        ..default()
-                    },
-                ));
+                    // Minus button
+                    row.spawn((
+                        Name::new("Minus Button"),
+                        Button,
+                        ImageNode::new(minus_button),
+                        ImageInteractionPalette {
+                            none: Color::WHITE,
+                            hovered: Color::srgb(0.85, 0.85, 0.85),
+                            pressed: Color::srgb(0.7, 0.7, 0.7),
+                        },
+                        Node {
+                            width: Val::Px(30.0),
+                            height: Val::Px(35.0),
+                            ..default()
+                        },
+                    ))
+                    .observe(lower_global_volume);
 
-                // Plus button
-                row.spawn((
-                    Name::new("Plus Button"),
-                    Button,
-                    ImageNode::new(plus_button),
-                    ImageInteractionPalette {
-                        none: Color::WHITE,
-                        hovered: Color::srgb(0.85, 0.85, 0.85),
-                        pressed: Color::srgb(0.7, 0.7, 0.7),
-                    },
-                    Node {
-                        width: Val::Px(30.0),
-                        height: Val::Px(35.0),
-                        ..default()
-                    },
-                )).observe(raise_global_volume);
-            });
+                    // Volume value
+                    row.spawn((
+                        Name::new("Volume Value"),
+                        Text::new("100%"),
+                        TextFont {
+                            font: font.clone(),
+                            font_size: 24.0,
+                            ..default()
+                        },
+                        TextColor(LABEL_TEXT),
+                        GlobalVolumeLabel,
+                        Node {
+                            width: Val::Px(60.0),
+                            justify_content: JustifyContent::Center,
+                            ..default()
+                        },
+                    ));
+
+                    // Plus button
+                    row.spawn((
+                        Name::new("Plus Button"),
+                        Button,
+                        ImageNode::new(plus_button),
+                        ImageInteractionPalette {
+                            none: Color::WHITE,
+                            hovered: Color::srgb(0.85, 0.85, 0.85),
+                            pressed: Color::srgb(0.7, 0.7, 0.7),
+                        },
+                        Node {
+                            width: Val::Px(30.0),
+                            height: Val::Px(35.0),
+                            ..default()
+                        },
+                    ))
+                    .observe(raise_global_volume);
+                });
 
             // Back button
-            parent.spawn(widget::button_image(back_button, 266.0, 105.0, go_back_on_click));
+            parent.spawn(widget::button_image(
+                back_button,
+                266.0,
+                105.0,
+                go_back_on_click,
+            ));
         })),
     ));
 }

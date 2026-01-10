@@ -400,4 +400,3 @@ fn check_danger_zone_game_over(
         next_menu.set(Menu::GameOver);
     }
 }
-

@@ -28,7 +28,6 @@ pub(super) fn plugin(app: &mut App) {
         Update,
         draw_debug_grid.run_if(in_state(Screen::Gameplay).and(debug_visible)),
     );
-
 }
 
 /// Resource to track if debug visualization is visible.
@@ -127,4 +126,3 @@ fn draw_bounds_outline(gizmos: &mut Gizmos, bounds: &super::grid::GridBounds, si
         }
     }
 }
-

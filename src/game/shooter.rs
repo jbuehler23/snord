@@ -11,7 +11,7 @@ use super::{
     grid::HexGrid,
     hex::HEX_SIZE,
     powerups::{PowerUp, UnlockedPowerUps},
-    projectile::{FireProjectile, Projectile, LEFT_WALL, RIGHT_WALL, TOP_WALL},
+    projectile::{FireProjectile, LEFT_WALL, Projectile, RIGHT_WALL, TOP_WALL},
     state::{GameLevel, TriggerDescent},
 };
 use crate::{PausableSystems, screens::Screen};
@@ -607,7 +607,10 @@ fn update_fortune_snord_visibility(
 /// Update trajectory segment sprites when Bouncy Snord powerup is active.
 fn draw_bounce_trajectory(
     shooter_query: Query<(&Transform, &AimDirection, &ShooterState), With<Shooter>>,
-    mut segment_query: Query<(&TrajectorySegment, &mut Transform, &mut Visibility), Without<Shooter>>,
+    mut segment_query: Query<
+        (&TrajectorySegment, &mut Transform, &mut Visibility),
+        Without<Shooter>,
+    >,
     powerups: Res<UnlockedPowerUps>,
 ) {
     let has_bouncy = powerups.has(PowerUp::BouncySnord);

@@ -4,7 +4,7 @@
 //! The shooter always has a "loaded" bubble ready to fire and
 //! a "next" bubble preview.
 
-use bevy::{prelude::*, window::PrimaryWindow};
+use bevy::{input::touch::Touches, prelude::*, window::PrimaryWindow};
 
 use super::{
     bubble::{Bubble, BubbleColor, GameAssets, SNORD_SPRITE_SCALE, load_game_assets},
@@ -22,6 +22,9 @@ pub(super) fn plugin(app: &mut App) {
     app.register_type::<AimDirection>();
     app.register_type::<NextBubble>();
 
+    // Initialize touch state resource
+    app.init_resource::<TouchAimState>();
+
     // Spawn shooter when entering gameplay (after assets are loaded)
     app.add_systems(
         OnEnter(Screen::Gameplay),
@@ -33,6 +36,7 @@ pub(super) fn plugin(app: &mut App) {
         Update,
         (
             update_aim_direction,
+            handle_touch_input,
             update_shooter_visuals,
             handle_fire_input,
             reload_shooter,
@@ -124,6 +128,18 @@ struct TrajectorySegment(usize);
 
 /// Maximum number of trajectory segments to show (initial + bounces).
 const MAX_TRAJECTORY_SEGMENTS: usize = 4;
+
+/// Resource tracking touch input state for mobile controls.
+/// Implements drag-to-aim, release-to-fire control scheme.
+#[derive(Resource, Default)]
+pub struct TouchAimState {
+    /// Whether we're currently tracking a touch for aiming.
+    pub is_aiming: bool,
+    /// The touch ID we're tracking (for multi-touch handling).
+    pub touch_id: Option<u64>,
+    /// Whether a fire should be triggered this frame (set on touch release).
+    pub should_fire: bool,
+}
 
 /// Spawn the shooter at the bottom of the screen.
 fn spawn_shooter(
@@ -340,6 +356,68 @@ fn update_aim_direction(
     aim.0 = Vec2::new(clamped_angle.sin(), clamped_angle.cos());
 }
 
+/// Handle touch input for mobile controls (drag-to-aim, release-to-fire).
+fn handle_touch_input(
+    touches: Res<Touches>,
+    camera_query: Query<(&Camera, &GlobalTransform)>,
+    mut shooter_query: Query<(&Transform, &mut AimDirection), With<Shooter>>,
+    mut touch_state: ResMut<TouchAimState>,
+) {
+    let Ok((camera, camera_transform)) = camera_query.single() else {
+        return;
+    };
+    let Ok((shooter_transform, mut aim)) = shooter_query.single_mut() else {
+        return;
+    };
+
+    // Reset fire flag at start of frame
+    touch_state.should_fire = false;
+
+    // Handle new touch (start aiming)
+    for touch in touches.iter_just_pressed() {
+        touch_state.is_aiming = true;
+        touch_state.touch_id = Some(touch.id());
+    }
+
+    // Handle touch release (fire!)
+    for touch in touches.iter_just_released() {
+        if touch_state.is_aiming && touch_state.touch_id == Some(touch.id()) {
+            touch_state.should_fire = true;
+            touch_state.is_aiming = false;
+            touch_state.touch_id = None;
+        }
+    }
+
+    // Update aim direction while touching (drag to aim)
+    if touch_state.is_aiming {
+        if let Some(touch_id) = touch_state.touch_id {
+            if let Some(touch) = touches.get_pressed(touch_id) {
+                // Convert touch position to world coordinates
+                let touch_screen_pos = touch.position();
+                if let Ok(touch_world_pos) =
+                    camera.viewport_to_world_2d(camera_transform, touch_screen_pos)
+                {
+                    // Calculate direction from shooter to touch position
+                    let shooter_pos = shooter_transform.translation.truncate();
+                    let mut direction = (touch_world_pos - shooter_pos).normalize_or_zero();
+
+                    // Ensure we're aiming upward (not down)
+                    if direction.y < 0.1 {
+                        direction.y = 0.1;
+                        direction = direction.normalize();
+                    }
+
+                    // Clamp angle to prevent too-horizontal shots
+                    let angle = direction.x.atan2(direction.y);
+                    let clamped_angle = angle.clamp(-MAX_AIM_ANGLE, MAX_AIM_ANGLE);
+
+                    aim.0 = Vec2::new(clamped_angle.sin(), clamped_angle.cos());
+                }
+            }
+        }
+    }
+}
+
 /// Update the shooter arrow visual (rotation, scale, visibility based on powerups).
 fn update_shooter_visuals(
     shooter_query: Query<&AimDirection, With<Shooter>>,
@@ -376,10 +454,11 @@ fn update_shooter_visuals(
     }
 }
 
-/// Handle fire input (mouse click or spacebar).
+/// Handle fire input (mouse click, spacebar, or touch release).
 fn handle_fire_input(
     mouse_input: Res<ButtonInput<MouseButton>>,
     keyboard_input: Res<ButtonInput<KeyCode>>,
+    touch_state: Res<TouchAimState>,
     mut shooter_query: Query<
         (&Transform, &AimDirection, &mut ShooterState, &LoadedBubble),
         With<Shooter>,
@@ -388,9 +467,10 @@ fn handle_fire_input(
     mut fire_events: MessageWriter<FireProjectile>,
     mut level: ResMut<GameLevel>,
 ) {
-    // Check for fire input
-    let fire_pressed =
-        mouse_input.just_pressed(MouseButton::Left) || keyboard_input.just_pressed(KeyCode::Space);
+    // Check for fire input (mouse click, spacebar, or touch release)
+    let fire_pressed = mouse_input.just_pressed(MouseButton::Left)
+        || keyboard_input.just_pressed(KeyCode::Space)
+        || touch_state.should_fire;
 
     if !fire_pressed {
         return;

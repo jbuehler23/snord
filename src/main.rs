@@ -34,7 +34,7 @@ impl Plugin for AppPlugin {
                 })
                 .set(WindowPlugin {
                     primary_window: Window {
-                        title: "Snord".to_string(),
+                        title: "snord".to_string(),
                         resolution: (800, 600).into(),
                         fit_canvas_to_parent: true,
                         ..default()

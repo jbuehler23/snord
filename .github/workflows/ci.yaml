@@ -51,14 +51,12 @@ jobs:
           toolchain: ${{ env.toolchain }}
 
       - name: Restore Rust cache
-        id: cache
         uses: Swatinem/rust-cache@v2
         with:
           shared-key: ci
           save-if: false
 
       - name: Install build dependencies
-        if: steps.cache.outputs.cache-hit != 'true'
         run: sudo apt-get update; sudo apt-get install --no-install-recommends libasound2-dev libudev-dev libwayland-dev
 
       - name: Check documentation
@@ -80,14 +78,12 @@ jobs:
           components: clippy
 
       - name: Restore Rust cache
-        id: cache
         uses: Swatinem/rust-cache@v2
         with:
           shared-key: ci
           save-if: ${{ github.ref == 'refs/heads/main' }}
 
       - name: Install build dependencies
-        if: steps.cache.outputs.cache-hit != 'true'
         run: sudo apt-get update; sudo apt-get install --no-install-recommends libasound2-dev libudev-dev libwayland-dev
 
       - name: Run Clippy lints
@@ -109,14 +105,12 @@ jobs:
           save-cache-if: ${{ github.ref == 'refs/heads/main' }}
 
       - name: Restore Rust cache
-        id: cache
         uses: Swatinem/rust-cache@v2
         with:
           shared-key: ci
           save-if: false
 
       - name: Install build dependencies
-        if: steps.cache.outputs.cache-hit != 'true'
         run: sudo apt-get update; sudo apt-get install --no-install-recommends libasound2-dev libudev-dev libwayland-dev
 
       - name: Run Bevy lints
@@ -172,14 +166,12 @@ jobs:
           targets: wasm32-unknown-unknown
 
       - name: Restore Rust cache
-        id: cache
         uses: Swatinem/rust-cache@v2
         with:
           shared-key: web-ci
           save-if: ${{ github.ref == 'refs/heads/main' }}
 
       - name: Install build dependencies
-        if: steps.cache.outputs.cache-hit != 'true'
         run: sudo apt-get update; sudo apt-get install --no-install-recommends libasound2-dev libudev-dev libwayland-dev
 
       - name: Check web

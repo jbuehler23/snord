@@ -389,31 +389,29 @@ fn handle_touch_input(
     }
 
     // Update aim direction while touching (drag to aim)
-    if touch_state.is_aiming {
-        if let Some(touch_id) = touch_state.touch_id {
-            if let Some(touch) = touches.get_pressed(touch_id) {
-                // Convert touch position to world coordinates
-                let touch_screen_pos = touch.position();
-                if let Ok(touch_world_pos) =
-                    camera.viewport_to_world_2d(camera_transform, touch_screen_pos)
-                {
-                    // Calculate direction from shooter to touch position
-                    let shooter_pos = shooter_transform.translation.truncate();
-                    let mut direction = (touch_world_pos - shooter_pos).normalize_or_zero();
+    if touch_state.is_aiming
+        && let Some(touch_id) = touch_state.touch_id
+        && let Some(touch) = touches.get_pressed(touch_id)
+    {
+        // Convert touch position to world coordinates
+        let touch_screen_pos = touch.position();
+        if let Ok(touch_world_pos) = camera.viewport_to_world_2d(camera_transform, touch_screen_pos)
+        {
+            // Calculate direction from shooter to touch position
+            let shooter_pos = shooter_transform.translation.truncate();
+            let mut direction = (touch_world_pos - shooter_pos).normalize_or_zero();
 
-                    // Ensure we're aiming upward (not down)
-                    if direction.y < 0.1 {
-                        direction.y = 0.1;
-                        direction = direction.normalize();
-                    }
-
-                    // Clamp angle to prevent too-horizontal shots
-                    let angle = direction.x.atan2(direction.y);
-                    let clamped_angle = angle.clamp(-MAX_AIM_ANGLE, MAX_AIM_ANGLE);
-
-                    aim.0 = Vec2::new(clamped_angle.sin(), clamped_angle.cos());
-                }
+            // Ensure we're aiming upward (not down)
+            if direction.y < 0.1 {
+                direction.y = 0.1;
+                direction = direction.normalize();
             }
+
+            // Clamp angle to prevent too-horizontal shots
+            let angle = direction.x.atan2(direction.y);
+            let clamped_angle = angle.clamp(-MAX_AIM_ANGLE, MAX_AIM_ANGLE);
+
+            aim.0 = Vec2::new(clamped_angle.sin(), clamped_angle.cos());
         }
     }
 }

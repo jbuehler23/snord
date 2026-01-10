@@ -1,7 +1,7 @@
 //! Hexagonal coordinate system using offset coordinates (odd-r).
 //!
 //! Based on Red Blob Games' excellent guide:
-//! https://www.redblobgames.com/grids/hexagons/
+//! <https://www.redblobgames.com/grids/hexagons/>
 //!
 //! We use "pointy-top" orientation with "odd-r" offset coordinates.
 //! This creates a rectangular grid where odd rows are shifted right by half a hex.

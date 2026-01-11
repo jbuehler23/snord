@@ -84,7 +84,12 @@ impl HighScores {
     }
 
     /// Get the file path for storing high scores.
+    /// Returns None on WASM targets where filesystem access is not available.
     fn file_path() -> Option<PathBuf> {
+        #[cfg(target_arch = "wasm32")]
+        return None;
+
+        #[cfg(not(target_arch = "wasm32"))]
         dirs::data_local_dir().map(|dir| dir.join("snord").join("highscores.json"))
     }
 
